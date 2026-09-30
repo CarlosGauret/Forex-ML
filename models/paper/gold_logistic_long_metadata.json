@@ -1,0 +1,33 @@
+{
+  "activo": "GOLD",
+  "direccion": "LONG",
+  "modelo": "LOGISTIC",
+  "features": [
+    "EMA20_EMA50",
+    "PRECIO_EMA20",
+    "PRECIO_EMA50",
+    "PRECIO_EMA200",
+    "RSI",
+    "ATR_PCT",
+    "RET_1H",
+    "RET_4H",
+    "RET_24H",
+    "VOLATILIDAD",
+    "RANGO_VELA",
+    "CUERPO_VELA",
+    "HORA",
+    "DIA_SEMANA"
+  ],
+  "fecha_inicio_datos": "2024-10-10T08:00:00",
+  "fecha_fin_entrenamiento": "2026-09-24T19:00:00",
+  "paper_start": "2026-09-27T17:16:28",
+  "numero_filas_entrenamiento": 10931,
+  "target_horizon": 24,
+  "fecha_creacion_modelo": "2026-09-27T17:26:07+00:00",
+  "thresholds_usados": [
+    0.55,
+    0.6
+  ],
+  "frozen": true,
+  "data_posterior_al_paper_utilizada": false
+}

@@ -1,0 +1,33 @@
+CAPITAL_INICIAL = 1000
+RIESGO_POR_OPERACION = 0.01
+COST_BPS = 2
+
+
+PAPER_CONFIGS = [
+    {
+        "CONFIG_ID": "GOLD_LONG_LOGISTIC_BASE_PLUS_ML_T060",
+        "ACTIVO": "GOLD",
+        "DIRECCION": "LONG",
+        "MODELO": "LOGISTIC",
+        "SISTEMA": "BASE_PLUS_ML",
+        "THRESHOLD": 0.60,
+        "TIMEFRAME": "1h",
+        "STOP_ATR": 1,
+        "TAKE_PROFIT_ATR": 2,
+        "MAX_HOLD_BARS": 24,
+        "RIESGO_POR_OPERACION": RIESGO_POR_OPERACION,
+    },
+    {
+        "CONFIG_ID": "GOLD_LONG_LOGISTIC_BASE_PLUS_ML_T055",
+        "ACTIVO": "GOLD",
+        "DIRECCION": "LONG",
+        "MODELO": "LOGISTIC",
+        "SISTEMA": "BASE_PLUS_ML",
+        "THRESHOLD": 0.55,
+        "TIMEFRAME": "1h",
+        "STOP_ATR": 1,
+        "TAKE_PROFIT_ATR": 2,
+        "MAX_HOLD_BARS": 24,
+        "RIESGO_POR_OPERACION": RIESGO_POR_OPERACION,
+    },
+]

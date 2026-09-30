@@ -1,0 +1,9 @@
+{
+  "asset": "EURUSD",
+  "timeframe": "H1",
+  "direction": "LONG",
+  "model": "RF_ACTUAL",
+  "system": "ML_ONLY",
+  "threshold": 0.65,
+  "start_time_utc": "2026-09-29T12:54:32+00:00"
+}
