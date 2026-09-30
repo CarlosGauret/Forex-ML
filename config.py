@@ -10,6 +10,13 @@ MAXIMUM_DAILY_LOSS = 0.03
 MAXIMUM_DRAWDOWN = None
 MAXIMUM_SIMULTANEOUS_POSITIONS = 3
 
+# Portafolio DEMO multi-activo (exploracion, solo cuenta demo; NO es un forward validado)
+DEMO_PORTFOLIO_ASSETS = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", "GOLD"]
+DEMO_PORTFOLIO_THRESHOLD = 0.60
+DEMO_PORTFOLIO_MAX_POSITIONS = 5
+# Desfase horario valido del servidor MT5 vs UTC. XM: GMT+2 (invierno) / GMT+3 (verano).
+MT5_SERVER_UTC_OFFSETS = (2, 3)
+
 
 ACTIVOS = {
     "GOLD": {

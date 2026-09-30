@@ -2,21 +2,24 @@
 chcp 65001 >nul
 setlocal
 
-set "PROJECT_DIR=D:\PROYECTOS\FOREX ML"
-set "PYTHON_EXE=D:\PROYECTOS\FOREX ML\.venv\Scripts\python.exe"
+rem Carpeta del proyecto = carpeta donde esta este .bat (funciona en C:, D: o cualquier ruta)
+set "PROJECT_DIR=%~dp0"
+if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
+set "PYTHON_EXE=%PROJECT_DIR%\.venv\Scripts\python.exe"
 set "PYTHONIOENCODING=utf-8"
 
 cd /d "%PROJECT_DIR%"
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$ErrorActionPreference = 'Stop';" ^
-  "$project = 'D:\PROYECTOS\FOREX ML';" ^
+  "$project = $env:PROJECT_DIR;" ^
   "$python = Join-Path $project '.venv\Scripts\python.exe';" ^
   "$main = Join-Path $project 'main.py';" ^
   "$logsDir = Join-Path $project 'logs';" ^
   "$summaryLog = Join-Path $logsDir 'paper_runner.log';" ^
   "$goldLog = Join-Path $logsDir 'paper_gold_runner.log';" ^
   "$eurusdLog = Join-Path $logsDir 'paper_eurusd_runner.log';" ^
+  "$portfolioLog = Join-Path $logsDir 'live_portfolio_runner.log';" ^
   "$lock = Join-Path $project 'paper\paper.lock';" ^
   "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false;" ^
   "$OutputEncoding = [Console]::OutputEncoding;" ^
@@ -82,14 +85,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Set-Content -Path $lock -Value $currentPid -Encoding ASCII;" ^
   "$goldExit = 1;" ^
   "$eurusdExit = 1;" ^
+  "$portfolioExit = 1;" ^
   "try {" ^
   "  if (-not (Test-Path $python)) { throw ('No existe Python del entorno virtual: ' + $python) }" ^
   "  Write-Log $summaryLog 'Ejecutando PAPER GOLD...';" ^
-  "  $goldExit = Invoke-PaperCommand 'GOLD' @('PAPER') $goldLog;" ^
+  "  $goldExit = Invoke-PaperCommand 'GOLD' @('LIVE', 'GOLD') $goldLog;" ^
   "  Write-Log $summaryLog ('GOLD EXIT CODE: ' + $goldExit);" ^
   "  Write-Log $summaryLog 'Ejecutando PAPER EURUSD...';" ^
-  "  $eurusdExit = Invoke-PaperCommand 'EURUSD' @('PAPER', 'EURUSD') $eurusdLog;" ^
+  "  $eurusdExit = Invoke-PaperCommand 'EURUSD' @('LIVE', 'EURUSD') $eurusdLog;" ^
   "  Write-Log $summaryLog ('EURUSD EXIT CODE: ' + $eurusdExit);" ^
+  "  Write-Log $summaryLog 'Ejecutando LIVE PORTFOLIO...';" ^
+  "  $portfolioExit = Invoke-PaperCommand 'PORTFOLIO' @('LIVE', 'PORTFOLIO') $portfolioLog;" ^
+  "  Write-Log $summaryLog ('PORTFOLIO EXIT CODE: ' + $portfolioExit);" ^
   "} catch {" ^
   "  Write-Log $summaryLog ('ERROR RUNNER: ' + $_.Exception.Message);" ^
   "} finally {" ^
@@ -98,11 +105,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "    if ($savedPid -eq $currentPid) { Remove-Item -Path $lock -Force }" ^
   "  }" ^
   "  $overallExit = 0;" ^
-  "  if (($goldExit -ne 0) -or ($eurusdExit -ne 0)) { $overallExit = 1 }" ^
+  "  if (($goldExit -ne 0) -or ($eurusdExit -ne 0) -or ($portfolioExit -ne 0)) { $overallExit = 1 }" ^
   "  $runEnd = Get-Date;" ^
   "  Write-Log $summaryLog ('PAPER RUN END: ' + $runEnd.ToString('yyyy-MM-dd HH:mm:ss'));" ^
   "  Write-Log $summaryLog ('GOLD EXIT CODE: ' + $goldExit);" ^
   "  Write-Log $summaryLog ('EURUSD EXIT CODE: ' + $eurusdExit);" ^
+  "  Write-Log $summaryLog ('PORTFOLIO EXIT CODE: ' + $portfolioExit);" ^
   "  Write-Log $summaryLog ('RUNNER EXIT CODE: ' + $overallExit);" ^
   "  Write-Log $summaryLog '';" ^
   "}" ^

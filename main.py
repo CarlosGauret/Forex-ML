@@ -3460,6 +3460,178 @@ def ejecutar_walkforward_v2_gold():
     print("ORDENES ENVIADAS: 0")
 
 
+def _imprimir_resultado_ejecucion(resultado):
+    print(f"  Estado: {resultado.status}")
+    print(f"  Motivo: {resultado.reason}")
+    print(f"  Simbolo: {resultado.symbol or resultado.asset}")
+    print(f"  Direccion: {resultado.direction}")
+    print(f"  Volumen: {resultado.volume}")
+    print(f"  Precio: {resultado.price}  SL: {resultado.sl}  TP: {resultado.tp}")
+    print(f"  Spread: {resultado.spread}")
+    print(f"  Ticket: {resultado.ticket}")
+
+
+def ejecutar_live(activo, forzar_dryrun=False):
+    from src.live_executor import STATUS_SENT, kill_switch_active
+    from src.live_runner import run_eurusd_live, run_gold_live
+
+    runner = run_gold_live if activo == "GOLD" else run_eurusd_live
+    try:
+        resultado = runner(RAIZ_PROYECTO, dry_run=True if forzar_dryrun else None)
+    except RuntimeError as error:
+        # El PAPER ya quedo procesado; solo fallo la conexion MT5 del ejecutor.
+        print(f"FOREX ML - LIVE {activo}: ERROR MT5: {error}")
+        print("PAPER procesado. Ejecutor MT5 no disponible: ORDENES ENVIADAS: 0")
+        sys.exit(1)
+    paper = resultado["paper"] or {}
+
+    print(f"FOREX ML - LIVE {activo} (MT5 DEMO)")
+    print()
+    print(f"CONFIG: {resultado['config_id']}")
+    print(f"MODO: {'DRY RUN (no envia ordenes)' if resultado['dry_run'] else 'EJECUCION DEMO'}")
+    print(f"KILL SWITCH: {'ACTIVO' if kill_switch_active(RAIZ_PROYECTO) else 'NO'}")
+    if resultado["paper_error"]:
+        print(f"ERROR PAPER: {resultado['paper_error']}")
+    elif activo == "EURUSD":
+        print(f"DATA STATUS PAPER: {paper.get('data_status')}")
+        print(f"Velas PAPER procesadas: {paper.get('processed', 0)}")
+    print()
+    intent = resultado["intent"]
+    if intent is None:
+        print("Senal pendiente: ninguna")
+    else:
+        print(f"Senal pendiente: {intent.signal_id} ({'fresca' if resultado['fresh'] else 'VIEJA, no se ejecuta'})")
+    if resultado["execution"] is not None:
+        print("Ejecucion:")
+        _imprimir_resultado_ejecucion(resultado["execution"])
+    print(f"Cierres por tiempo: {len(resultado['closed'])}")
+    for cierre in resultado["closed"]:
+        _imprimir_resultado_ejecucion(cierre)
+    enviadas = 1 if resultado["execution"] is not None and resultado["execution"].status == STATUS_SENT else 0
+    print()
+    print(f"TRADING ENABLED: {_estado_bool(TRADING_ENABLED)}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
+    print(f"ORDENES ENVIADAS: {enviadas}")
+    if resultado["paper_error"]:
+        sys.exit(1)
+
+
+def ejecutar_live_portfolio(forzar_dryrun=False):
+    from src.demo_portfolio import run_portfolio_live
+    from src.live_executor import STATUS_SENT, kill_switch_active
+
+    try:
+        resultado = run_portfolio_live(RAIZ_PROYECTO, dry_run=True if forzar_dryrun else None)
+    except RuntimeError as error:
+        print(f"FOREX ML - LIVE PORTFOLIO: ERROR MT5: {error}")
+        sys.exit(1)
+
+    print("FOREX ML - LIVE PORTFOLIO DEMO (exploracion, no validado para real)")
+    print()
+    print(f"MODO: {'DRY RUN (no envia ordenes)' if resultado['dry_run'] else 'EJECUCION DEMO'}")
+    print(f"KILL SWITCH: {'ACTIVO' if kill_switch_active(RAIZ_PROYECTO) else 'NO'}")
+    print()
+    print(f"{'ACTIVO':<8}{'SIMBOLO':<10}{'P LONG':>8}{'P SHORT':>9}  {'DECISION':<10}EJECUCION")
+    enviadas = 0
+    for item in resultado["results"]:
+        ejecucion = item["execution"]
+        detalle = ""
+        if ejecucion is not None:
+            detalle = f"{ejecucion.status} {ejecucion.reason}"
+            if ejecucion.volume:
+                detalle += f" | {ejecucion.volume} lotes @ {ejecucion.price} SL {ejecucion.sl} TP {ejecucion.tp}"
+            enviadas += ejecucion.status == STATUS_SENT
+        p_long = f"{item['prob_long']:.3f}" if "prob_long" in item else "-"
+        p_short = f"{item['prob_short']:.3f}" if "prob_short" in item else "-"
+        print(f"{item['asset']:<8}{item['symbol'] or '-':<10}{p_long:>8}{p_short:>9}  {item['decision']:<10}{detalle}")
+        for cierre in item["closed"]:
+            print(f"    cierre por tiempo: ticket {cierre.ticket} {cierre.status}")
+    print()
+    print(f"Cierres avisados por Telegram (SL/TP/manual): {len(resultado['closed_deals'])}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
+    print(f"ORDENES ENVIADAS: {enviadas}")
+
+
+def ejecutar_live_portfolio_train():
+    import pandas as pd
+
+    from src.demo_portfolio import train_portfolio_models
+
+    print("Entrenando modelos del portafolio DEMO (puede tardar unos minutos)...")
+    reporte = pd.DataFrame(train_portfolio_models(RAIZ_PROYECTO))
+    print(reporte[["activo", "direccion", "train_end", "holdout_signals_per_day", "holdout_win_rate"]].to_string(index=False))
+
+
+def ejecutar_live_test(activo, direccion):
+    from src.demo_portfolio import send_test_order
+
+    direccion = {"COMPRA": "BUY", "VENTA": "SELL"}.get(direccion, direccion)
+    resultado = send_test_order(RAIZ_PROYECTO, activo, direccion)
+    print(f"FOREX ML - ORDEN DE PRUEBA {activo} {direccion}")
+    print()
+    print(f"MODO: {'DRY RUN (no envia ordenes)' if resultado.dry_run else 'EJECUCION DEMO'}")
+    _imprimir_resultado_ejecucion(resultado)
+
+
+def ejecutar_live_closeall():
+    from src.live_executor import close_all_positions, mt5_session, telegram_notifier
+
+    dry_run = not DEMO_EXECUTION_ENABLED
+    notify = None if dry_run else telegram_notifier(RAIZ_PROYECTO, "ALL", "CLOSEALL")
+    with mt5_session() as mt5:
+        resultados = close_all_positions(mt5, RAIZ_PROYECTO, dry_run=dry_run, notify=notify)
+    print("FOREX ML - CERRAR TODAS LAS POSICIONES DEL BOT")
+    print(f"MODO: {'DRY RUN (no cierra)' if dry_run else 'EJECUCION DEMO'}")
+    print(f"Posiciones procesadas: {len(resultados)}")
+    for resultado in resultados:
+        _imprimir_resultado_ejecucion(resultado)
+
+
+def ejecutar_live_reconcile():
+    from src.live_executor import mt5_session, reconcile
+
+    with mt5_session() as mt5:
+        resultado = reconcile(mt5, RAIZ_PROYECTO)
+
+    print("FOREX ML - LIVE RECONCILE")
+    print()
+    print(f"Ordenes enviadas en journal: {resultado['journal_sent']}")
+    print(f"Posiciones abiertas del bot en MT5: {len(resultado['open_positions'])}")
+    for posicion in resultado["open_positions"]:
+        print(
+            f"  #{posicion.ticket} {posicion.symbol} vol {posicion.volume} "
+            f"precio {posicion.price_open} SL {posicion.sl} TP {posicion.tp} P/L {posicion.profit}"
+        )
+    print(f"En journal pero no en MT5: {len(resultado['missing_in_mt5'])}")
+    for fila in resultado["missing_in_mt5"]:
+        print(f"  {fila['SIGNAL_ID']} ticket {fila['TICKET']}")
+    print(f"En MT5 pero no en journal: {len(resultado['orphans_in_mt5'])}")
+    for posicion in resultado["orphans_in_mt5"]:
+        print(f"  #{posicion.ticket} {posicion.symbol} comentario {posicion.comment}")
+    print()
+    print(f"RESULTADO: {'OK' if resultado['ok'] else 'REVISAR'}")
+    if not resultado["ok"]:
+        sys.exit(1)
+
+
+def ejecutar_live_stop():
+    from src.live_executor import kill_switch_path
+
+    ruta = kill_switch_path(RAIZ_PROYECTO)
+    ruta.write_text("Aperturas bloqueadas manualmente.\n", encoding="utf-8")
+    print(f"KILL SWITCH ACTIVADO: {ruta}")
+    print("No se abriran nuevas posiciones. Los cierres por tiempo siguen funcionando.")
+
+
+def ejecutar_live_resume():
+    from src.live_executor import kill_switch_path
+
+    ruta = kill_switch_path(RAIZ_PROYECTO)
+    if ruta.exists():
+        ruta.unlink()
+    print("KILL SWITCH DESACTIVADO.")
+
+
 def main():
     if len(sys.argv) < 2:
         mostrar_activos_disponibles()
@@ -3502,6 +3674,37 @@ def main():
 
     if activo == "HEALTH":
         ejecutar_health()
+        return
+
+    if activo == "LIVE":
+        modo_live = sys.argv[2].upper() if len(sys.argv) >= 3 else ""
+        submodo_live = sys.argv[3].upper() if len(sys.argv) >= 4 else ""
+        if modo_live in ("EURUSD", "GOLD"):
+            ejecutar_live(modo_live, forzar_dryrun=submodo_live == "DRYRUN")
+        elif modo_live == "PORTFOLIO":
+            if submodo_live == "TRAIN":
+                ejecutar_live_portfolio_train()
+            else:
+                ejecutar_live_portfolio(forzar_dryrun=submodo_live == "DRYRUN")
+        elif modo_live == "TEST" and len(sys.argv) >= 5:
+            ejecutar_live_test(sys.argv[3].upper(), sys.argv[4].upper())
+        elif modo_live == "CLOSEALL":
+            ejecutar_live_closeall()
+        elif modo_live == "RECONCILE":
+            ejecutar_live_reconcile()
+        elif modo_live == "STOP":
+            ejecutar_live_stop()
+        elif modo_live == "RESUME":
+            ejecutar_live_resume()
+        else:
+            print("Usa: python main.py LIVE EURUSD [DRYRUN]")
+            print("O: python main.py LIVE GOLD [DRYRUN]")
+            print("O: python main.py LIVE PORTFOLIO [DRYRUN|TRAIN]")
+            print("O: python main.py LIVE TEST EURUSD BUY|SELL")
+            print("O: python main.py LIVE CLOSEALL")
+            print("O: python main.py LIVE RECONCILE")
+            print("O: python main.py LIVE STOP")
+            print("O: python main.py LIVE RESUME")
         return
 
     if activo == "RESEARCH":

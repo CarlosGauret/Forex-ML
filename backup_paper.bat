@@ -2,7 +2,9 @@
 chcp 65001 >nul
 setlocal
 
-set "PROJECT_DIR=D:\PROYECTOS\FOREX ML"
+rem Carpeta del proyecto = carpeta donde esta este .bat
+set "PROJECT_DIR=%~dp0"
+if "%PROJECT_DIR:~-1%"=="\" set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
 cd /d "%PROJECT_DIR%"
 
 for /f %%I in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "STAMP=%%I"

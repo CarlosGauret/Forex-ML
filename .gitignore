@@ -22,6 +22,7 @@ logs/
 *.log
 *.lock
 paper/paper.lock
+STOP_TRADING
 
 # =========================
 # BACKUPS

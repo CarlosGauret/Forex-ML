@@ -153,8 +153,11 @@ class RiskManager:
         current_drawdown=0.0,
         symbol=None,
         open_symbols=None,
+        safety_gate=None,
     ):
-        safety = evaluate_trade_gate("ORDER_SEND")
+        # safety_gate permite que la ejecucion DEMO pase su propia puerta
+        # (cuenta demo + DEMO_EXECUTION_ENABLED). Por defecto: TRADING_ENABLED.
+        safety = safety_gate if safety_gate is not None else evaluate_trade_gate("ORDER_SEND")
         if not safety.allowed:
             return RiskGateResult(False, DECISION_SKIP, safety.reason)
 
