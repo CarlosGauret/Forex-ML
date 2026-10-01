@@ -3,6 +3,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from config import (
+    MAX_POSITIONS_PER_SYMBOL,
+    MAX_TOTAL_OPEN_RISK_PERCENT,
     MAXIMUM_DAILY_LOSS,
     MAXIMUM_DRAWDOWN,
     MAXIMUM_SIMULTANEOUS_POSITIONS,
@@ -22,6 +24,8 @@ class RiskLimits:
     risk_per_trade: float = RISK_PER_TRADE
     maximum_daily_loss: float = MAXIMUM_DAILY_LOSS
     maximum_simultaneous_positions: int = MAXIMUM_SIMULTANEOUS_POSITIONS
+    maximum_positions_per_symbol: int = MAX_POSITIONS_PER_SYMBOL
+    maximum_total_open_risk: float = MAX_TOTAL_OPEN_RISK_PERCENT / 100
     maximum_drawdown: Optional[float] = MAXIMUM_DRAWDOWN
     kill_switch: bool = False
 
@@ -148,8 +152,12 @@ class RiskManager:
     def evaluate_trade_permission(
         self,
         balance,
+        equity=None,
+        starting_day_equity=None,
         daily_loss=0.0,
         open_positions=0,
+        open_risk_amount=0.0,
+        new_trade_risk_amount=0.0,
         current_drawdown=0.0,
         symbol=None,
         open_symbols=None,
@@ -165,8 +173,14 @@ class RiskManager:
             return RiskGateResult(False, DECISION_SKIP, "KILL_SWITCH_ACTIVE")
 
         balance = float(balance)
+        equity = balance if equity is None else float(equity)
+        risk_base = equity if equity > 0 else balance
         daily_loss = abs(float(daily_loss))
-        if balance > 0 and daily_loss >= balance * self.limits.maximum_daily_loss:
+        if starting_day_equity is not None:
+            day_base = float(starting_day_equity)
+            if day_base > 0 and equity <= day_base * (1 - self.limits.maximum_daily_loss):
+                return RiskGateResult(False, DECISION_SKIP, "DAILY_LOSS_LIMIT")
+        if risk_base > 0 and daily_loss >= risk_base * self.limits.maximum_daily_loss:
             return RiskGateResult(False, DECISION_SKIP, "MAXIMUM_DAILY_LOSS_REACHED")
 
         if open_positions >= self.limits.maximum_simultaneous_positions:
@@ -175,8 +189,13 @@ class RiskManager:
         if symbol is not None and open_symbols is not None:
             normalized_symbol = str(symbol).upper()
             normalized_open_symbols = {str(item).upper() for item in open_symbols}
-            if normalized_symbol in normalized_open_symbols:
+            symbol_count = sum(1 for item in normalized_open_symbols if item == normalized_symbol)
+            if symbol_count >= self.limits.maximum_positions_per_symbol:
                 return RiskGateResult(False, DECISION_SKIP, "SYMBOL_POSITION_ALREADY_OPEN")
+
+        total_open_risk = float(open_risk_amount or 0) + float(new_trade_risk_amount or 0)
+        if risk_base > 0 and total_open_risk > risk_base * self.limits.maximum_total_open_risk:
+            return RiskGateResult(False, DECISION_SKIP, "MAX_TOTAL_OPEN_RISK")
 
         if (
             self.limits.maximum_drawdown is not None
@@ -194,21 +213,24 @@ class RiskManager:
         stop_loss,
         balance,
         symbol_info,
+        equity=None,
         order_calc_profit=None,
         order_type=None,
     ):
         entry = float(entry)
         stop_loss = float(stop_loss)
         balance = float(balance)
-        risk_amount = balance * self.limits.risk_per_trade
+        equity = balance if equity is None else float(equity)
+        risk_base = equity if equity > 0 else balance
+        risk_amount = risk_base * self.limits.risk_per_trade
         volume_min = float(_value(symbol_info, "volume_min", 0) or 0)
         volume_max = float(_value(symbol_info, "volume_max", 0) or 0)
         volume_step = float(_value(symbol_info, "volume_step", 0) or 0)
 
         if direction not in (BUY, SELL):
             raise ValueError(f"Direccion no soportada: {direction}")
-        if balance <= 0 or risk_amount <= 0:
-            raise ValueError("balance y risk_amount deben ser mayores a 0.")
+        if risk_base <= 0 or risk_amount <= 0:
+            raise ValueError("equity/balance y risk_amount deben ser mayores a 0.")
         if entry <= 0 or stop_loss <= 0 or entry == stop_loss:
             raise ValueError("entry y stop_loss deben ser validos y diferentes.")
         if volume_min <= 0 or volume_max <= 0 or volume_step <= 0:
@@ -273,7 +295,7 @@ class RiskManager:
                 loss_source=source,
             )
 
-        risk_pct_minimum = (min_volume_loss / balance) * 100
+        risk_pct_minimum = (min_volume_loss / risk_base) * 100
         if min_volume_loss > risk_amount:
             return PositionSizingResult(
                 ok=False,
@@ -375,7 +397,7 @@ class RiskManager:
             volume=volume,
             estimated_loss=estimated_loss,
             min_volume_loss=min_volume_loss,
-            risk_pct_real=(estimated_loss / balance) * 100,
+            risk_pct_real=(estimated_loss / risk_base) * 100,
             risk_pct_minimum=risk_pct_minimum,
             volume_min=volume_min,
             volume_max=volume_max,

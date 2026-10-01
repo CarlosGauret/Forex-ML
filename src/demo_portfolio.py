@@ -31,6 +31,7 @@ from src.live_executor import (
     OrderIntent,
     close_expired_positions,
     execute_signal,
+    manage_protective_exits,
     mt5_session,
     notify_closed_deals,
     telegram_notifier,
@@ -51,6 +52,11 @@ EMBARGO_BARS = 24
 DIRECTIONS = {"LONG": ("TARGET_LONG", BUY), "SHORT": ("TARGET_SHORT", SELL)}
 SIGNAL_COLUMNS = [
     "FECHA_SIGNAL", "ASSET", "SYMBOL", "PROB_LONG", "PROB_SHORT", "DECISION", "SIGNAL_ID",
+    "EVENT_STATUS", "SKIP_REASON",
+]
+SHADOW_COLUMNS = [
+    "FECHA_SIGNAL", "ASSET", "SYMBOL", "DECISION", "SIGNAL_ID", "SKIP_REASON",
+    "PROB_LONG", "PROB_SHORT",
 ]
 
 
@@ -146,6 +152,50 @@ def load_portfolio_models(root, assets=None):
     return models
 
 
+def audit_portfolio_models(root, assets=None):
+    """Inventario de modelos demo disponibles y compatibilidad con el scanner."""
+    rows = []
+    for asset in assets or DEMO_PORTFOLIO_ASSETS:
+        for direction in DIRECTIONS:
+            path = model_path(root, asset, direction)
+            metadata_path = path.with_suffix(".json")
+            row = {
+                "asset": asset,
+                "direction": direction,
+                "model_path": str(path),
+                "metadata_path": str(metadata_path),
+                "exists": path.exists(),
+                "metadata_exists": metadata_path.exists(),
+                "compatible": False,
+                "reason": "",
+                "timeframe": None,
+                "features": None,
+                "config_id": config_id(asset, direction),
+            }
+            if not path.exists():
+                row["reason"] = "MODEL_FILE_MISSING"
+            elif not metadata_path.exists():
+                row["reason"] = "METADATA_MISSING"
+            else:
+                metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                row.update({
+                    "timeframe": metadata.get("timeframe"),
+                    "features": metadata.get("features"),
+                    "config_id": metadata.get("config_id", row["config_id"]),
+                })
+                if _sha256(path) != metadata.get("hash_modelo"):
+                    row["reason"] = "MODEL_HASH_MISMATCH"
+                elif metadata.get("features") != FEATURES_ML:
+                    row["reason"] = "FEATURES_MISMATCH"
+                elif metadata.get("timeframe") != "H1":
+                    row["reason"] = "TIMEFRAME_MISMATCH"
+                else:
+                    row["compatible"] = True
+                    row["reason"] = "OK"
+            rows.append(row)
+    return rows
+
+
 def _probability(model, row):
     x = pd.DataFrame([row[FEATURES_ML].astype(float).to_dict()])
     classes = list(model.classes_)
@@ -212,6 +262,16 @@ def _append_signal(root, row):
     pd.DataFrame([row], columns=SIGNAL_COLUMNS).to_csv(path, mode="a", header=not path.exists(), index=False)
 
 
+def _append_shadow_signal(root, row):
+    path = Path(root) / "live" / "shadow_signals.csv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        existing = pd.read_csv(path, usecols=["SIGNAL_ID", "SKIP_REASON"])
+        if ((existing["SIGNAL_ID"] == row["SIGNAL_ID"]) & (existing["SKIP_REASON"] == row["SKIP_REASON"])).any():
+            return
+    pd.DataFrame([row], columns=SHADOW_COLUMNS).to_csv(path, mode="a", header=not path.exists(), index=False)
+
+
 def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, models=None):
     dry_run = (not DEMO_EXECUTION_ENABLED) if dry_run is None else dry_run
     now = pd.to_datetime(now or pd.Timestamp.now(tz="UTC"), utc=True)
@@ -226,6 +286,7 @@ def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, mo
         found = [r.mt5_symbol for r in resolved.values() if r.found]
         for symbol in found:
             mt5.symbol_select(symbol, True)
+        protective_updates = manage_protective_exits(mt5, root, dry_run=dry_run, notify=notify)
         server_offset = infer_server_offset(mt5, found, now)
         for asset in DEMO_PORTFOLIO_ASSETS:
             symbol = resolved[asset].mt5_symbol
@@ -251,6 +312,7 @@ def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, mo
             _append_signal(root, {
                 "FECHA_SIGNAL": fecha, "ASSET": asset, "SYMBOL": symbol, "PROB_LONG": prob_long,
                 "PROB_SHORT": prob_short, "DECISION": decision, "SIGNAL_ID": signal_id,
+                "EVENT_STATUS": "SIGNAL_GENERATED", "SKIP_REASON": "",
             })
             if decision == "WAIT":
                 continue
@@ -267,9 +329,20 @@ def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, mo
             item["execution"] = execute_signal(
                 mt5, intent, root, dry_run=dry_run, risk_manager=risk_manager, notify=notify,
             )
+            if item["execution"].status == "SKIP":
+                _append_shadow_signal(root, {
+                    "FECHA_SIGNAL": fecha,
+                    "ASSET": asset,
+                    "SYMBOL": symbol,
+                    "DECISION": decision,
+                    "SIGNAL_ID": signal_id,
+                    "SKIP_REASON": item["execution"].reason,
+                    "PROB_LONG": prob_long,
+                    "PROB_SHORT": prob_short,
+                })
 
     return {"dry_run": dry_run, "results": results, "closed_deals": closed_deals,
-            "server_offset": server_offset}
+            "server_offset": server_offset, "protective_updates": protective_updates}
 
 
 def current_atr(mt5, symbol):

@@ -16,8 +16,22 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from config import (
+    BREAK_EVEN_OFFSET_POINTS,
+    BREAK_EVEN_TRIGGER_R,
+    EXIT_MODE,
+    MAX_SPREAD_ATR_RATIO_BY_ASSET,
+    TRAILING_DISTANCE_R,
+    TRAILING_START_R,
+)
 from src.execution_demo import evaluate_demo_account, evaluate_demo_order_gate
 from src.risk import BUY, SELL, RiskManager
+from src.risk_state import (
+    ProtectiveExitState,
+    load_exit_states,
+    load_or_roll_daily_risk_state,
+    save_exit_states,
+)
 from src.symbols import discover_symbols
 
 
@@ -41,6 +55,8 @@ STATUS_SKIP = "SKIP"
 STATUS_ERROR = "ERROR"
 STATUS_CLOSED_TIME = "CLOSED_TIME"
 STATUS_DRY_RUN_CLOSE = "DRY_RUN_CLOSE"
+STATUS_SL_UPDATED = "SL_UPDATED"
+STATUS_DRY_RUN_SL_UPDATE = "DRY_RUN_SL_UPDATE"
 
 JOURNAL_COLUMNS = [
     "TIMESTAMP_UTC",
@@ -60,6 +76,21 @@ JOURNAL_COLUMNS = [
     "RETCODE",
     "COMMENT",
     "DRY_RUN",
+    "EXIT_MODE",
+    "RISK_PERCENT",
+    "RISK_USD",
+    "RISK_PCT_REAL",
+    "EQUITY_BEFORE_TRADE",
+    "BALANCE_BEFORE_TRADE",
+    "SPREAD_AT_ENTRY",
+    "R_CURRENT",
+    "BREAK_EVEN_ACTIVATED",
+    "TRAILING_ACTIVATED",
+    "HIGHEST_FAVORABLE_PRICE",
+    "HIGHEST_FAVORABLE_R",
+    "SIGNAL_EXECUTED",
+    "SIGNAL_SKIPPED_REASON",
+    "SHADOW_RESULT",
 ]
 
 
@@ -92,6 +123,21 @@ class ExecutionResult:
     retcode: int | None = None
     comment: str = ""
     dry_run: bool = True
+    exit_mode: str = EXIT_MODE
+    risk_percent: float | None = None
+    risk_usd: float | None = None
+    risk_pct_real: float | None = None
+    equity_before_trade: float | None = None
+    balance_before_trade: float | None = None
+    spread_at_entry: float | None = None
+    r_current: float | None = None
+    break_even_activated: bool = False
+    trailing_activated: bool = False
+    highest_favorable_price: float | None = None
+    highest_favorable_r: float | None = None
+    signal_executed: bool = False
+    signal_skipped_reason: str = ""
+    shadow_result: str = ""
 
 
 def _value(obj, name, default=None):
@@ -203,6 +249,41 @@ def build_levels(direction, price, atr, stop_atr, take_profit_atr, digits):
     return round(sl, digits), round(tp, digits)
 
 
+def _account_balance_equity(account):
+    balance = float(_value(account, "balance", 0) or 0)
+    equity = float(_value(account, "equity", balance) or balance)
+    return balance, equity
+
+
+def _risk_amount_for_position(mt5, position):
+    symbol = _value(position, "symbol")
+    sl = float(_value(position, "sl", 0) or 0)
+    entry = float(_value(position, "price_open", 0) or 0)
+    volume = float(_value(position, "volume", 0) or 0)
+    if not symbol or sl <= 0 or entry <= 0 or volume <= 0:
+        return 0.0
+    is_buy = _value(position, "type") == getattr(mt5, "POSITION_TYPE_BUY", 0)
+    order_type = mt5.ORDER_TYPE_BUY if is_buy else mt5.ORDER_TYPE_SELL
+    calc = getattr(mt5, "order_calc_profit", None)
+    if calc is None:
+        return 0.0
+    loss = calc(order_type, symbol, volume, entry, sl)
+    return abs(float(loss or 0))
+
+
+def open_risk_amount(mt5, positions):
+    return sum(_risk_amount_for_position(mt5, position) for position in positions)
+
+
+def spread_atr_ratio_limit(asset, symbol):
+    asset_key = str(asset or "").upper()
+    symbol_key = str(symbol or "").upper()
+    return MAX_SPREAD_ATR_RATIO_BY_ASSET.get(
+        asset_key,
+        MAX_SPREAD_ATR_RATIO_BY_ASSET.get(symbol_key, MAX_SPREAD_ATR_RATIO),
+    )
+
+
 def _base_result(intent, dry_run, **fields):
     return ExecutionResult(
         signal_id=intent.signal_id,
@@ -249,7 +330,17 @@ def execute_signal(
         return result
 
     def skip(reason, journal=True, **fields):
-        return finish(_base_result(intent, dry_run, status=STATUS_SKIP, reason=reason, **fields), journal)
+        return finish(
+            _base_result(
+                intent,
+                dry_run,
+                status=STATUS_SKIP,
+                reason=reason,
+                signal_skipped_reason=reason,
+                **fields,
+            ),
+            journal,
+        )
 
     if intent.direction not in (BUY, SELL):
         return skip("INVALID_DIRECTION")
@@ -278,12 +369,18 @@ def execute_signal(
         return skip("NO_PRICE", symbol=symbol)
 
     manager = risk_manager or RiskManager()
-    balance = float(_value(account, "balance", 0) or 0)
+    balance, equity = _account_balance_equity(account)
     positions = bot_positions(mt5)
+    daily_state = load_or_roll_daily_risk_state(root, equity, now)
+    expected_trade_risk = equity * manager.limits.risk_per_trade
     permission = manager.evaluate_trade_permission(
         balance=balance,
+        equity=equity,
+        starting_day_equity=daily_state.starting_equity,
         daily_loss=daily_loss(mt5, int(_value(tick, "time", 0) or 0), now=now),
         open_positions=len(positions),
+        open_risk_amount=open_risk_amount(mt5, positions),
+        new_trade_risk_amount=expected_trade_risk,
         symbol=symbol,
         open_symbols={_value(p, "symbol") for p in positions},
         safety_gate=gate,
@@ -295,7 +392,7 @@ def execute_signal(
     atr = float(intent.atr)
     if atr <= 0:
         return skip("INVALID_ATR", symbol=symbol, spread=spread)
-    if spread > MAX_SPREAD_ATR_RATIO * atr:
+    if spread > spread_atr_ratio_limit(intent.asset, symbol) * atr:
         return skip("SPREAD_TOO_WIDE", symbol=symbol, spread=spread)
 
     digits = int(_value(info, "digits", 5) or 5)
@@ -314,6 +411,7 @@ def execute_signal(
         entry=price,
         stop_loss=sl,
         balance=balance,
+        equity=equity,
         symbol_info=info,
         order_calc_profit=getattr(mt5, "order_calc_profit", None),
         order_type=order_type,
@@ -335,11 +433,21 @@ def execute_signal(
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": _filling_mode(mt5, info),
     }
-    fields = {"symbol": symbol, "volume": sizing.volume, "spread": spread}
+    fields = {
+        "symbol": symbol,
+        "volume": sizing.volume,
+        "spread": spread,
+        "spread_at_entry": spread,
+        "risk_percent": manager.limits.risk_per_trade * 100,
+        "risk_usd": sizing.risk_amount,
+        "risk_pct_real": sizing.risk_pct_real,
+        "equity_before_trade": equity,
+        "balance_before_trade": balance,
+    }
 
     if dry_run:
         return finish(_base_result(intent, dry_run, status=STATUS_DRY_RUN, reason="NOT_SENT_DRY_RUN",
-                                   price=price, sl=sl, tp=tp, **fields))
+                                   price=price, sl=sl, tp=tp, signal_executed=False, **fields))
 
     result = None
     for attempt in range(MAX_SEND_ATTEMPTS):
@@ -355,7 +463,7 @@ def execute_signal(
             return finish(_base_result(
                 intent, dry_run, status=STATUS_SENT, reason="OK",
                 price=float(_value(result, "price", 0) or price), sl=sl, tp=tp,
-                ticket=_value(result, "order"), retcode=retcode, **fields,
+                ticket=_value(result, "order"), retcode=retcode, signal_executed=True, **fields,
             ))
         if retcode not in RETRY_RETCODES:
             break
@@ -440,6 +548,162 @@ def close_position(mt5, root, position, reason, closed_status, dry_run=True, not
         _notify(notify, event_id, format_execution_message(result))
     append_journal(root, result, now)
     return result
+
+
+def _position_side(mt5, position):
+    is_buy = _value(position, "type") == getattr(mt5, "POSITION_TYPE_BUY", 0)
+    return BUY if is_buy else SELL
+
+
+def _current_exit_price(mt5, position):
+    symbol = _value(position, "symbol")
+    tick = mt5.symbol_info_tick(symbol)
+    return float(_value(tick, "bid" if _position_side(mt5, position) == BUY else "ask", 0) or 0)
+
+
+def _favorable_r(direction, entry, current_price, initial_risk):
+    if initial_risk <= 0:
+        return 0.0
+    if direction == BUY:
+        return (current_price - entry) / initial_risk
+    return (entry - current_price) / initial_risk
+
+
+def _better_stop(direction, candidate, current_sl):
+    if current_sl is None or current_sl <= 0:
+        return True
+    return candidate > current_sl if direction == BUY else candidate < current_sl
+
+
+def manage_protective_exits(
+    mt5,
+    root,
+    exit_mode=EXIT_MODE,
+    dry_run=True,
+    notify=None,
+    now=None,
+):
+    """Move SL to break-even/trailing for bot positions when an experiment asks for it.
+
+    FIXED_TP intentionally returns no actions, preserving current behavior.
+    """
+    if exit_mode == "FIXED_TP":
+        return []
+    if not _close_gate_allowed(mt5, dry_run):
+        return []
+
+    states = load_exit_states(root)
+    results = []
+    active_tickets = set()
+    for position in bot_positions(mt5):
+        ticket = str(_value(position, "ticket"))
+        active_tickets.add(ticket)
+        symbol = _value(position, "symbol")
+        info = mt5.symbol_info(symbol)
+        direction = _position_side(mt5, position)
+        entry = float(_value(position, "price_open", 0) or 0)
+        current_sl = float(_value(position, "sl", 0) or 0)
+        tp = float(_value(position, "tp", 0) or 0)
+        if entry <= 0 or current_sl <= 0:
+            continue
+
+        state = states.get(ticket) or ProtectiveExitState(ticket=ticket, symbol=symbol)
+        state.symbol = symbol
+        state.entry_price = state.entry_price or entry
+        state.initial_sl = state.initial_sl or current_sl
+        state.initial_risk = state.initial_risk or abs(entry - state.initial_sl)
+        state.current_sl = current_sl
+        if not state.initial_risk or state.initial_risk <= 0:
+            states[ticket] = state
+            continue
+
+        current_price = _current_exit_price(mt5, position)
+        if current_price <= 0:
+            states[ticket] = state
+            continue
+        current_r = _favorable_r(direction, entry, current_price, state.initial_risk)
+        state.highest_favorable_r = max(state.highest_favorable_r, current_r)
+        if (
+            state.highest_favorable_price is None
+            or (direction == BUY and current_price > state.highest_favorable_price)
+            or (direction == SELL and current_price < state.highest_favorable_price)
+        ):
+            state.highest_favorable_price = current_price
+
+        digits = int(_value(info, "digits", 5) or 5)
+        point = float(_value(info, "point", 0) or 0)
+        offset = BREAK_EVEN_OFFSET_POINTS * point
+        candidate_sl = None
+        reason = ""
+        if current_r >= BREAK_EVEN_TRIGGER_R and not state.break_even_activated:
+            candidate_sl = entry + offset if direction == BUY else entry - offset
+            reason = "BREAK_EVEN"
+        if exit_mode == "TRAILING" and current_r >= TRAILING_START_R:
+            trail_distance = state.initial_risk * TRAILING_DISTANCE_R
+            trailing_sl = current_price - trail_distance if direction == BUY else current_price + trail_distance
+            if candidate_sl is None or _better_stop(direction, trailing_sl, candidate_sl):
+                candidate_sl = trailing_sl
+                reason = "TRAILING_STOP"
+
+        if candidate_sl is None:
+            states[ticket] = state
+            continue
+        candidate_sl = round(candidate_sl, digits)
+        if not _better_stop(direction, candidate_sl, current_sl):
+            states[ticket] = state
+            continue
+
+        state.current_sl = candidate_sl
+        state.break_even_activated = state.break_even_activated or reason in ("BREAK_EVEN", "TRAILING_STOP")
+        state.trailing_activated = state.trailing_activated or reason == "TRAILING_STOP"
+        base = {
+            "signal_id": f"{reason}|{ticket}",
+            "symbol": symbol,
+            "direction": direction,
+            "price": current_price,
+            "sl": candidate_sl,
+            "tp": tp,
+            "ticket": _value(position, "ticket"),
+            "comment": _value(position, "comment", ""),
+            "dry_run": dry_run,
+            "exit_mode": exit_mode,
+            "r_current": current_r,
+            "break_even_activated": state.break_even_activated,
+            "trailing_activated": state.trailing_activated,
+            "highest_favorable_price": state.highest_favorable_price,
+            "highest_favorable_r": state.highest_favorable_r,
+        }
+        if dry_run:
+            result = ExecutionResult(status=STATUS_DRY_RUN_SL_UPDATE, reason=reason, **base)
+        else:
+            sent = mt5.order_send({
+                "action": getattr(mt5, "TRADE_ACTION_SLTP", 6),
+                "position": _value(position, "ticket"),
+                "symbol": symbol,
+                "sl": candidate_sl,
+                "tp": tp,
+                "magic": MAGIC_NUMBER,
+                "comment": _value(position, "comment", ""),
+            })
+            retcode = _value(sent, "retcode")
+            ok = retcode in (RETCODE_DONE, RETCODE_PLACED)
+            result = ExecutionResult(
+                status=STATUS_SL_UPDATED if ok else STATUS_ERROR,
+                reason=reason if ok else f"SL_UPDATE_FAILED: {_value(sent, 'comment', mt5.last_error())}",
+                retcode=retcode,
+                **base,
+            )
+            if ok:
+                _notify(notify, f"LIVE_SL_UPDATE|{ticket}|{reason}", format_execution_message(result))
+        append_journal(root, result, now)
+        results.append(result)
+        states[ticket] = state
+
+    for ticket in list(states):
+        if ticket not in active_tickets:
+            del states[ticket]
+    save_exit_states(root, states)
+    return results
 
 
 def _close_gate_allowed(mt5, dry_run):

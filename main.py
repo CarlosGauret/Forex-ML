@@ -3745,9 +3745,28 @@ def ejecutar_live_portfolio(forzar_dryrun=False):
         for cierre in item["closed"]:
             print(f"    cierre por tiempo: ticket {cierre.ticket} {cierre.status}")
     print()
+    print(f"Actualizaciones SL protectoras: {len(resultado.get('protective_updates', []))}")
     print(f"Cierres avisados por Telegram (SL/TP/manual): {len(resultado['closed_deals'])}")
     print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
     print(f"ORDENES ENVIADAS: {enviadas}")
+
+
+def ejecutar_live_portfolio_audit():
+    from src.demo_portfolio import audit_portfolio_models
+
+    rows = audit_portfolio_models(RAIZ_PROYECTO)
+    print("FOREX ML - AUDITORIA MODELOS PORTAFOLIO DEMO")
+    print()
+    print(f"{'ACTIVO':<8}{'DIR':<7}{'OK':<5}{'TIMEFRAME':<10}CONFIG / MOTIVO")
+    for row in rows:
+        ok = "SI" if row["compatible"] else "NO"
+        detail = row["config_id"] if row["compatible"] else row["reason"]
+        print(f"{row['asset']:<8}{row['direction']:<7}{ok:<5}{str(row['timeframe']):<10}{detail}")
+    print()
+    print(f"Modelos compatibles: {sum(1 for row in rows if row['compatible'])}/{len(rows)}")
+    print(f"TRADING ENABLED: {_estado_bool(TRADING_ENABLED)}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
+    print("ORDENES ENVIADAS: 0")
 
 
 def ejecutar_live_portfolio_train():
@@ -3887,7 +3906,9 @@ def main():
         if modo_live in ("EURUSD", "GOLD"):
             ejecutar_live(modo_live, forzar_dryrun=submodo_live == "DRYRUN")
         elif modo_live == "PORTFOLIO":
-            if submodo_live == "TRAIN":
+            if submodo_live == "AUDIT":
+                ejecutar_live_portfolio_audit()
+            elif submodo_live == "TRAIN":
                 ejecutar_live_portfolio_train()
             else:
                 ejecutar_live_portfolio(forzar_dryrun=submodo_live == "DRYRUN")
@@ -3904,7 +3925,7 @@ def main():
         else:
             print("Usa: python main.py LIVE EURUSD [DRYRUN]")
             print("O: python main.py LIVE GOLD [DRYRUN]")
-            print("O: python main.py LIVE PORTFOLIO [DRYRUN|TRAIN]")
+            print("O: python main.py LIVE PORTFOLIO [DRYRUN|TRAIN|AUDIT]")
             print("O: python main.py LIVE TEST EURUSD BUY|SELL")
             print("O: python main.py LIVE CLOSEALL")
             print("O: python main.py LIVE RECONCILE")
