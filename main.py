@@ -1459,6 +1459,40 @@ def ejecutar_health():
             print(f"- {check['nombre']}: {check['detalle']}")
 
 
+def ejecutar_gold_data_check():
+    from src.gold_data_check import run_gold_data_check
+
+    resultado = run_gold_data_check(RAIZ_PROYECTO)
+
+    print("FOREX ML - GOLD DATA CHECK")
+    print()
+    print(f"Directorio trabajo: {resultado['cwd']}")
+    print(f"Proyecto: {resultado['project_root']}")
+    print(f"Timestamp UTC: {resultado['timestamp_utc']}")
+    print(f"Ticker GOLD: {resultado['ticker']}")
+    print(f"YFinance cache: {resultado['cache_dir']}")
+    print()
+    print("Directorios:")
+    for nombre, check in resultado["checks"].items():
+        estado = "OK" if check["exists"] and check["readable"] and check["writable"] else "ERROR"
+        print(f"- {nombre}: {estado}")
+        print(f"  ruta: {check['path']}")
+        print(f"  existe: {_estado_bool(check['exists'])} lectura: {_estado_bool(check['readable'])} escritura: {_estado_bool(check['writable'])}")
+        if check["error"]:
+            print(f"  error: {check['error']}")
+    print()
+    print(f"Filas descargadas: {resultado['rows']}")
+    print(f"Ultima vela disponible: {resultado['last_bar'] or 'N/A'}")
+    print(f"Ultima vela cerrada: {resultado['last_closed_bar'] or 'N/A'}")
+    print(f"DATA STATUS: {resultado['data_status']}")
+    if resultado["error"]:
+        print(f"ERROR: {resultado['error']}")
+    print()
+    print(f"TRADING ENABLED: {_estado_bool(TRADING_ENABLED)}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
+    print("ORDENES ENVIADAS: 0")
+
+
 def ejecutar_mt5_check():
     from src.mt5_connector import verificar_mt5_demo_readonly
 
@@ -1718,6 +1752,170 @@ def ejecutar_mt5_preview_all():
     print(f"TRADING ENABLED: {_estado_bool(TRADING_ENABLED)}")
     print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
     print(f"ORDENES ENVIADAS: {resultado.get('ordenes_enviadas', 0)}")
+
+
+def ejecutar_mt5_demo_test(modo="PREVIEW"):
+    from src.mt5_demo_test import run_mt5_demo_test
+
+    resultado = run_mt5_demo_test(RAIZ_PROYECTO, mode=modo)
+
+    print("FOREX ML - MT5 DEMO TEST")
+    print()
+    print(f"Modo: {modo}")
+    print(f"Cuenta: {resultado.account}")
+    print(f"Servidor: {resultado.server}")
+    print(f"Activo: {resultado.symbol}")
+    print(f"Bid: {formatear_numero(resultado.bid)}")
+    print(f"Ask: {formatear_numero(resultado.ask)}")
+    print(f"Volume min: {formatear_numero(resultado.volume_min)}")
+    print(f"Volume step: {formatear_numero(resultado.volume_step)}")
+    print(f"Volumen de prueba: {formatear_numero(resultado.volume)}")
+    print(f"SL: {formatear_numero(resultado.sl)}")
+    print(f"TP: {formatear_numero(resultado.tp)}")
+    print(f"Riesgo estimado: {formatear_numero(resultado.estimated_risk)}")
+    print(f"order_check retcode: {resultado.order_check_retcode}")
+    if resultado.order_check_comment:
+        print(f"order_check comment: {resultado.order_check_comment}")
+    print()
+    print(f"Estado: {resultado.status}")
+    print(f"Motivo: {resultado.reason}")
+    if resultado.reason == "REAL ACCOUNT BLOCKED":
+        print("REAL ACCOUNT BLOCKED")
+    if resultado.order_retcode is not None:
+        print(f"order_send retcode: {resultado.order_retcode}")
+    if resultado.order_ticket is not None:
+        print(f"Order ticket: {resultado.order_ticket}")
+    if resultado.deal_ticket is not None:
+        print(f"Deal ticket: {resultado.deal_ticket}")
+    if resultado.requested_price is not None:
+        print(f"Precio solicitado: {formatear_numero(resultado.requested_price)}")
+    if resultado.executed_price is not None:
+        print(f"Precio ejecutado: {formatear_numero(resultado.executed_price)}")
+    if resultado.close_price is not None:
+        print(f"Precio salida: {formatear_numero(resultado.close_price)}")
+    if resultado.profit is not None:
+        print(f"Profit/Loss: {formatear_numero(resultado.profit)}")
+    if resultado.duration_seconds is not None:
+        print(f"Duracion segundos: {resultado.duration_seconds}")
+    print()
+    print(f"TRADING ENABLED: {_estado_bool(resultado.trading_enabled)}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(resultado.demo_execution_enabled)}")
+    print(f"ORDENES ENVIADAS: {resultado.orders_sent}")
+
+
+def ejecutar_mt5_demo_auto_preview():
+    from src.mt5_demo_auto import AUTHORIZED_CONFIGS, run_preview
+
+    resultados = run_preview(RAIZ_PROYECTO)
+
+    print("FOREX ML - MT5 DEMO AUTO PREVIEW")
+    print()
+    print("Cuenta: DEMO")
+    print("Estrategias autorizadas:")
+    for config_id in AUTHORIZED_CONFIGS:
+        print(f"- {config_id}")
+    print()
+    print(f"{'ACTIVO':<8}{'SIMBOLO':<10}{'CONFIGS':<62}{'EDAD':>8}  {'DECISION':<12}MOTIVO")
+    ordenes = 0
+    for item in resultados:
+        configs = "|".join(item.config_ids)
+        edad = formatear_numero(item.signal_age_minutes)
+        decision = item.status
+        print(f"{item.asset:<8}{(item.symbol or '-'):<10}{configs:<62}{edad:>8}  {decision:<12}{item.reason}")
+        if item.price is not None:
+            print(
+                f"    entry {formatear_numero(item.price)} SL {formatear_numero(item.sl)} "
+                f"TP {formatear_numero(item.tp)} lote {formatear_numero(item.volume)} "
+                f"riesgo {formatear_numero(item.estimated_loss)}"
+            )
+        ordenes += item.orders_sent
+    print()
+    print(f"TRADING ENABLED: {_estado_bool(TRADING_ENABLED)}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
+    print(f"ORDENES ENVIADAS: {ordenes}")
+
+
+def ejecutar_mt5_demo_auto_status():
+    from src.mt5_demo_auto import run_status
+
+    resultado = run_status(RAIZ_PROYECTO)
+
+    print("FOREX ML - MT5 DEMO AUTO STATUS")
+    print()
+    print(f"DEMO execution enabled: {_estado_bool(resultado['demo_execution_enabled'])}")
+    print(f"Cuenta: {resultado['account']}")
+    print(f"Posiciones FOREX ML abiertas: {len(resultado['open_positions'])}")
+    for posicion in resultado["open_positions"]:
+        print(f"  #{getattr(posicion, 'ticket', 'N/A')} {getattr(posicion, 'symbol', 'N/A')} P/L {getattr(posicion, 'profit', 'N/A')}")
+    print(f"Daily P/L demo: {formatear_numero(resultado['daily_pl'])}")
+    print(f"Daily loss limit: {formatear_numero(resultado['daily_loss_limit'])}")
+    last_signal = resultado.get("last_signal") or {}
+    print(f"Ultima senal: {last_signal.get('asset', 'N/A')} {last_signal.get('config_id', 'N/A')} {last_signal.get('bar_timestamp', 'N/A')} {last_signal.get('signal', 'N/A')}/{last_signal.get('execution', 'N/A')}")
+    print(f"Ultima orden enviada: {(resultado.get('last_order') or {}).get('timestamp', 'N/A')}")
+    print(f"Ultimo cierre: {(resultado.get('last_close') or {}).get('timestamp', 'N/A')}")
+    print(f"Ultimo error: {(resultado.get('last_error') or {}).get('reason', 'N/A')}")
+    print(f"Ordenes enviadas hoy: {resultado['orders_sent_today']}")
+    print()
+    print(f"TRADING ENABLED: {_estado_bool(resultado['trading_enabled'])}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(resultado['demo_execution_enabled'])}")
+    print("ORDENES ENVIADAS: 0")
+
+
+def ejecutar_mt5_demo_auto_run():
+    from src.mt5_demo_auto import run_auto
+
+    resultados = run_auto(RAIZ_PROYECTO)
+    ordenes = sum(item.orders_sent for item in resultados)
+
+    print("FOREX ML - MT5 DEMO AUTO RUN")
+    print()
+    for item in resultados:
+        print(f"{item.asset} {item.symbol or '-'} {item.status}: {item.reason}")
+        if item.ticket is not None:
+            print(f"  ticket {item.ticket} deal {item.deal}")
+    print()
+    print(f"TRADING ENABLED: {_estado_bool(TRADING_ENABLED)}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
+    print(f"ORDENES ENVIADAS: {ordenes}")
+
+
+def ejecutar_mt5_demo_gold_preview():
+    from src.mt5_demo_auto import gold_chain_preview
+
+    resultado = gold_chain_preview(RAIZ_PROYECTO)
+    signal = resultado.get("signal")
+    broker = resultado.get("broker", {})
+
+    print("FOREX ML - MT5 DEMO GOLD CHAIN PREVIEW")
+    print()
+    print(f"SIGNAL SOURCE: {resultado.get('signal_source', 'GC=F')}")
+    print(f"EXECUTION SYMBOL: {resultado.get('execution_symbol', 'N/A')}")
+    if signal is not None:
+        print(f"signal timestamp: {signal.bar_timestamp}")
+        print(f"configs: {'|'.join(resultado.get('config_ids', []))}")
+        print(f"paper signal: {signal.signal}/{signal.execution}")
+    print(f"broker Bid: {formatear_numero(resultado.get('bid'))}")
+    print(f"broker Ask: {formatear_numero(resultado.get('ask'))}")
+    print(f"ATR de estrategia: {formatear_numero(resultado.get('atr'))}")
+    print(f"distancia SL: {formatear_numero(resultado.get('sl_distance'))}")
+    print(f"distancia TP: {formatear_numero(resultado.get('tp_distance'))}")
+    print(f"SL broker propuesto: {formatear_numero(resultado.get('sl'))}")
+    print(f"TP broker propuesto: {formatear_numero(resultado.get('tp'))}")
+    print(f"volumen teorico: {formatear_numero(resultado.get('theoretical_volume'))}")
+    print(f"volumen final: {formatear_numero(resultado.get('final_volume'))}")
+    print(f"riesgo USD: {formatear_numero(resultado.get('risk_usd'))}")
+    print(f"decision: {resultado.get('decision', resultado.get('reason', 'N/A'))}")
+    print()
+    print("Broker metadata:")
+    print(f"contract_size: {formatear_numero(broker.get('contract_size'))}")
+    print(f"volume_min: {formatear_numero(broker.get('volume_min'))}")
+    print(f"volume_step: {formatear_numero(broker.get('volume_step'))}")
+    print(f"tick_size: {formatear_numero(broker.get('tick_size'))}")
+    print(f"tick_value: {formatear_numero(broker.get('tick_value'))}")
+    print()
+    print(f"TRADING ENABLED: {_estado_bool(TRADING_ENABLED)}")
+    print(f"DEMO EXECUTION ENABLED: {_estado_bool(DEMO_EXECUTION_ENABLED)}")
+    print(f"ORDENES ENVIADAS: {resultado.get('orders_sent', 0)}")
 
 
 def _imprimir_top_escenarios(titulo, datos, direccion=None, limite=6):
@@ -3639,6 +3837,13 @@ def main():
 
     activo = sys.argv[1].upper()
 
+    if activo == "GOLD":
+        modo_gold = sys.argv[2].upper() if len(sys.argv) >= 3 else ""
+        submodo_gold = sys.argv[3].upper() if len(sys.argv) >= 4 else ""
+        if modo_gold == "DATA" and submodo_gold == "CHECK":
+            ejecutar_gold_data_check()
+            return
+
     if activo == "PAPER":
         modo_paper = sys.argv[2].upper() if len(sys.argv) >= 3 else "RUN"
         submodo_paper = sys.argv[3].upper() if len(sys.argv) >= 4 else "RUN"
@@ -3755,6 +3960,40 @@ def main():
         modo_mt5 = sys.argv[2].upper() if len(sys.argv) >= 3 else ""
         if modo_mt5 == "CHECK":
             ejecutar_mt5_check()
+        elif modo_mt5 == "DEMO":
+            scope_mt5 = sys.argv[3].upper() if len(sys.argv) >= 4 else ""
+            accion_mt5 = sys.argv[4].upper() if len(sys.argv) >= 5 else ""
+            if scope_mt5 == "TEST":
+                if accion_mt5 == "CLOSE":
+                    ejecutar_mt5_demo_test("CLOSE")
+                elif accion_mt5 == "PREVIEW":
+                    ejecutar_mt5_demo_test("PREVIEW")
+                elif accion_mt5 == "":
+                    ejecutar_mt5_demo_test("TEST")
+                else:
+                    print("Usa: python main.py MT5 DEMO TEST [PREVIEW|CLOSE]")
+            elif scope_mt5 == "AUTO":
+                if accion_mt5 == "PREVIEW":
+                    ejecutar_mt5_demo_auto_preview()
+                elif accion_mt5 == "STATUS":
+                    ejecutar_mt5_demo_auto_status()
+                elif accion_mt5 == "RUN":
+                    ejecutar_mt5_demo_auto_run()
+                else:
+                    print("Usa: python main.py MT5 DEMO AUTO PREVIEW")
+                    print("O: python main.py MT5 DEMO AUTO STATUS")
+                    print("O: python main.py MT5 DEMO AUTO RUN")
+            elif scope_mt5 == "GOLD":
+                if accion_mt5 == "PREVIEW":
+                    ejecutar_mt5_demo_gold_preview()
+                else:
+                    print("Usa: python main.py MT5 DEMO GOLD PREVIEW")
+            else:
+                print("Usa: python main.py MT5 DEMO TEST [PREVIEW|CLOSE]")
+                print("O: python main.py MT5 DEMO AUTO PREVIEW")
+                print("O: python main.py MT5 DEMO AUTO STATUS")
+                print("O: python main.py MT5 DEMO AUTO RUN")
+                print("O: python main.py MT5 DEMO GOLD PREVIEW")
         elif modo_mt5 == "PREVIEW":
             scope_mt5 = sys.argv[3].upper() if len(sys.argv) >= 4 else ""
             if scope_mt5 == "ALL":
@@ -3769,6 +4008,13 @@ def main():
                 ejecutar_mt5_dryrun()
         else:
             print("Usa: python main.py MT5 CHECK")
+            print("O: python main.py MT5 DEMO TEST PREVIEW")
+            print("O: python main.py MT5 DEMO TEST")
+            print("O: python main.py MT5 DEMO TEST CLOSE")
+            print("O: python main.py MT5 DEMO AUTO PREVIEW")
+            print("O: python main.py MT5 DEMO AUTO STATUS")
+            print("O: python main.py MT5 DEMO AUTO RUN")
+            print("O: python main.py MT5 DEMO GOLD PREVIEW")
             print("O: python main.py MT5 PREVIEW ALL")
             print("O: python main.py MT5 DRYRUN")
             print("O: python main.py MT5 DRYRUN ALL")

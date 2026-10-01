@@ -19,7 +19,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$summaryLog = Join-Path $logsDir 'paper_runner.log';" ^
   "$goldLog = Join-Path $logsDir 'paper_gold_runner.log';" ^
   "$eurusdLog = Join-Path $logsDir 'paper_eurusd_runner.log';" ^
-  "$portfolioLog = Join-Path $logsDir 'live_portfolio_runner.log';" ^
+  "$autoLog = Join-Path $logsDir 'mt5_demo_auto_runner.log';" ^
   "$lock = Join-Path $project 'paper\paper.lock';" ^
   "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false;" ^
   "$OutputEncoding = [Console]::OutputEncoding;" ^
@@ -85,18 +85,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Set-Content -Path $lock -Value $currentPid -Encoding ASCII;" ^
   "$goldExit = 1;" ^
   "$eurusdExit = 1;" ^
-  "$portfolioExit = 1;" ^
+  "$autoExit = 1;" ^
   "try {" ^
   "  if (-not (Test-Path $python)) { throw ('No existe Python del entorno virtual: ' + $python) }" ^
   "  Write-Log $summaryLog 'Ejecutando PAPER GOLD...';" ^
-  "  $goldExit = Invoke-PaperCommand 'GOLD' @('LIVE', 'GOLD') $goldLog;" ^
+  "  $goldExit = Invoke-PaperCommand 'GOLD PAPER' @('PAPER') $goldLog;" ^
   "  Write-Log $summaryLog ('GOLD EXIT CODE: ' + $goldExit);" ^
   "  Write-Log $summaryLog 'Ejecutando PAPER EURUSD...';" ^
-  "  $eurusdExit = Invoke-PaperCommand 'EURUSD' @('LIVE', 'EURUSD') $eurusdLog;" ^
+  "  $eurusdExit = Invoke-PaperCommand 'EURUSD PAPER' @('PAPER', 'EURUSD') $eurusdLog;" ^
   "  Write-Log $summaryLog ('EURUSD EXIT CODE: ' + $eurusdExit);" ^
-  "  Write-Log $summaryLog 'Ejecutando LIVE PORTFOLIO...';" ^
-  "  $portfolioExit = Invoke-PaperCommand 'PORTFOLIO' @('LIVE', 'PORTFOLIO') $portfolioLog;" ^
-  "  Write-Log $summaryLog ('PORTFOLIO EXIT CODE: ' + $portfolioExit);" ^
+  "  Write-Log $summaryLog 'Ejecutando MT5 DEMO AUTO RUN...';" ^
+  "  $autoExit = Invoke-PaperCommand 'MT5 DEMO AUTO RUN' @('MT5', 'DEMO', 'AUTO', 'RUN') $autoLog;" ^
+  "  Write-Log $summaryLog ('MT5 DEMO AUTO RUN EXIT CODE: ' + $autoExit);" ^
   "} catch {" ^
   "  Write-Log $summaryLog ('ERROR RUNNER: ' + $_.Exception.Message);" ^
   "} finally {" ^
@@ -105,12 +105,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "    if ($savedPid -eq $currentPid) { Remove-Item -Path $lock -Force }" ^
   "  }" ^
   "  $overallExit = 0;" ^
-  "  if (($goldExit -ne 0) -or ($eurusdExit -ne 0) -or ($portfolioExit -ne 0)) { $overallExit = 1 }" ^
+  "  if (($goldExit -ne 0) -or ($eurusdExit -ne 0) -or ($autoExit -ne 0)) { $overallExit = 1 }" ^
   "  $runEnd = Get-Date;" ^
   "  Write-Log $summaryLog ('PAPER RUN END: ' + $runEnd.ToString('yyyy-MM-dd HH:mm:ss'));" ^
   "  Write-Log $summaryLog ('GOLD EXIT CODE: ' + $goldExit);" ^
   "  Write-Log $summaryLog ('EURUSD EXIT CODE: ' + $eurusdExit);" ^
-  "  Write-Log $summaryLog ('PORTFOLIO EXIT CODE: ' + $portfolioExit);" ^
+  "  Write-Log $summaryLog ('MT5 DEMO AUTO RUN EXIT CODE: ' + $autoExit);" ^
   "  Write-Log $summaryLog ('RUNNER EXIT CODE: ' + $overallExit);" ^
   "  Write-Log $summaryLog '';" ^
   "}" ^

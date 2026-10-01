@@ -4,6 +4,7 @@ import pandas as pd
 import yfinance as yf
 
 from config import ACTIVOS
+from src.yfinance_cache import ensure_yfinance_cache
 
 
 COLUMNAS_PRECIO = ["Open", "High", "Low", "Close", "Volume"]
@@ -59,6 +60,7 @@ def _preparar_datos(datos, activo, ticker, periodo_descargado):
 
 def _descargar_y_preparar(ticker, activo):
     errores = []
+    ensure_yfinance_cache()
 
     for periodo in PERIODOS_H1:
         try:

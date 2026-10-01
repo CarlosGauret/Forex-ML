@@ -142,6 +142,45 @@ class TelegramEventsTests(unittest.TestCase):
 
         self.assertIn("Operaciones cerradas: 0", message)
         self.assertIn("Resultado neto: $0.00", message)
+        self.assertIn("MT5 DEMO", message)
+
+    def test_daily_report_separates_mt5_demo_real_execution(self):
+        live = self.root / "live"
+        live.mkdir(parents=True)
+        pd.DataFrame(
+            [
+                {
+                    "timestamp": "2026-09-30T22:00:00+00:00",
+                    "status": "CLOSED",
+                    "reason": "TP",
+                    "execution_id": "E1",
+                    "config_ids": "EURUSD_LONG_RF_ACTUAL_ML_ONLY_T065",
+                    "asset": "EURUSD",
+                    "symbol": "EURUSD",
+                    "direction": "BUY",
+                    "bar_timestamp": "2026-09-30T20:00:00",
+                    "volume": 0.01,
+                    "price": 1.1,
+                    "sl": 1.09,
+                    "tp": 1.12,
+                    "risk_usd": 1.0,
+                    "ticket": 1,
+                    "deal": 2,
+                    "retcode": 10009,
+                    "comment": "FOREX_ML_EURUSD_DEMO",
+                    "event": "CLOSE",
+                    "profit": 0.84,
+                    "commission": 0,
+                    "swap": 0,
+                }
+            ]
+        ).to_csv(live / "forward_demo_orders.csv", index=False)
+
+        message = te.build_daily_report(self.root, now="2026-10-01T03:30:00+00:00")
+
+        self.assertIn("MT5 DEMO", message)
+        self.assertIn("Operaciones: 1", message)
+        self.assertIn("Resultado neto: +$0.84", message)
 
     def test_timezone_america_lima(self):
         paper = self.root / "paper" / "eurusd"

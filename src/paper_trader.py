@@ -223,7 +223,9 @@ def _descargar_datos_recientes(activo):
     import yfinance as yf
 
     from src.indicators import calcular_indicadores
+    from src.yfinance_cache import ensure_yfinance_cache
 
+    ensure_yfinance_cache()
     ticker = ACTIVOS[activo]["ticker"]
     datos = yf.download(
         ticker,

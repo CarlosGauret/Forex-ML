@@ -492,6 +492,27 @@ def _capital_lines(root):
     return items
 
 
+def _mt5_demo_rows(root, target_date):
+    root = _root(root)
+    df = _read_csv(root / "live" / "forward_demo_orders.csv")
+    if df.empty:
+        return []
+    day = _rows_for_lima_date(df, "timestamp", target_date)
+    if day.empty:
+        return []
+    rows = []
+    for _, item in day.iterrows():
+        row = item.to_dict()
+        if str(row.get("event", "")).upper() != "CLOSE":
+            continue
+        profit = float(row.get("profit", 0) or 0)
+        commission = float(row.get("commission", 0) or 0)
+        swap = float(row.get("swap", 0) or 0)
+        row["_PNL"] = profit + commission + swap
+        rows.append(row)
+    return rows
+
+
 def build_daily_report(root, now=None):
     now_ts = pd.to_datetime(now or datetime.now(timezone.utc), utc=True).tz_convert(LIMA_TZ)
     target_date = now_ts.date()
@@ -502,6 +523,10 @@ def build_daily_report(root, now=None):
     signals = _signal_count(root, target_date)
     skips = _skip_count(root, target_date)
     errors = _error_count(root, target_date)
+    mt5_demo = _mt5_demo_rows(root, target_date)
+    mt5_wins = sum(1 for trade in mt5_demo if trade["_PNL"] > 0)
+    mt5_losses = sum(1 for trade in mt5_demo if trade["_PNL"] < 0)
+    mt5_net = sum(trade["_PNL"] for trade in mt5_demo)
 
     lines = [
         "📊 FOREX ML - RESUMEN DIARIO",
@@ -546,6 +571,20 @@ def build_daily_report(root, now=None):
             lines.append(f"{label}:")
             lines.append(_fmt_money(capital).replace("+", ""))
             lines.append("")
+
+    lines.extend(
+        [
+            "",
+            "--------------------",
+            "",
+            "MT5 DEMO",
+            "",
+            f"Operaciones: {len(mt5_demo)}",
+            f"Ganadas: {mt5_wins}",
+            f"Perdidas: {mt5_losses}",
+            f"Resultado neto: {_fmt_money(mt5_net)}",
+        ]
+    )
 
     lines.extend(
         [
