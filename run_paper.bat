@@ -26,6 +26,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Set-Location $project;" ^
   "New-Item -ItemType Directory -Force -Path $logsDir | Out-Null;" ^
   "New-Item -ItemType Directory -Force -Path (Split-Path $lock) | Out-Null;" ^
+  ". (Join-Path $project 'scripts\paper_lock.ps1');" ^
   "function Rotate-Log($path) {" ^
   "  if ((Test-Path $path) -and ((Get-Item $path).Length -gt 20MB)) {" ^
   "    $stampRotate = Get-Date -Format 'yyyyMMdd_HHmmss';" ^
@@ -67,22 +68,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Write-Log $summaryLog '================================================';" ^
   "Write-Log $summaryLog ('PAPER RUN START: ' + $runStart.ToString('yyyy-MM-dd HH:mm:ss'));" ^
   "Write-Log $summaryLog '================================================';" ^
-  "if (Test-Path $lock) {" ^
-  "  $lockPid = (Get-Content -Path $lock -Raw).Trim();" ^
-  "  $active = $false;" ^
-  "  if ($lockPid -match '^\d+$') {" ^
-  "    try { Get-Process -Id ([int]$lockPid) -ErrorAction Stop | Out-Null; $active = $true } catch { $active = $false }" ^
-  "  }" ^
-  "  if ($active) {" ^
-  "    Write-Log $summaryLog ('PAPER ya esta en ejecucion. PID activo: ' + $lockPid);" ^
-  "    Write-Log $summaryLog 'RUNNER EXIT CODE: 0';" ^
-  "    Write-Log $summaryLog '';" ^
-  "    exit 0" ^
-  "  }" ^
-  "  Remove-Item -Path $lock -Force" ^
-  "}" ^
   "$currentPid = [string]$PID;" ^
-  "Set-Content -Path $lock -Value $currentPid -Encoding ASCII;" ^
+  "$ownLockStream = New-PaperLock $lock $currentPid;" ^
+  "if ($null -eq $ownLockStream) { exit 0 }" ^
   "$goldExit = 1;" ^
   "$eurusdExit = 1;" ^
   "$autoExit = 1;" ^
@@ -100,10 +88,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "} catch {" ^
   "  Write-Log $summaryLog ('ERROR RUNNER: ' + $_.Exception.Message);" ^
   "} finally {" ^
-  "  if (Test-Path $lock) {" ^
-  "    $savedPid = (Get-Content -Path $lock -Raw).Trim();" ^
-  "    if ($savedPid -eq $currentPid) { Remove-Item -Path $lock -Force }" ^
-  "  }" ^
+  "  Clear-OwnPaperLock $lock $currentPid $ownLockStream;" ^
   "  $overallExit = 0;" ^
   "  if (($goldExit -ne 0) -or ($eurusdExit -ne 0) -or ($autoExit -ne 0)) { $overallExit = 1 }" ^
   "  $runEnd = Get-Date;" ^
