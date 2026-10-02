@@ -124,6 +124,19 @@ class FakeMT5:
         return (0, "fake")
 
 
+class FailedOrderMT5(FakeMT5):
+    def order_send(self, request):
+        self.calls.append(("send", dict(request)))
+        return SimpleNamespace(retcode=10019, order=None, deal=None, price=request["price"], comment="no money")
+
+
+class UnconfirmedOrderMT5(FakeMT5):
+    def order_send(self, request):
+        self.calls.append(("send", dict(request)))
+        ticket = 9000 + len([c for c in self.calls if c[0] == "send"])
+        return SimpleNamespace(retcode=10009, order=ticket, deal=ticket + 100, price=request["price"], comment="sent")
+
+
 def _write_csv(path, rows, fieldnames):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
@@ -384,6 +397,38 @@ class Mt5DemoAutoTests(unittest.TestCase):
         with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
             build_decisions(FakeMT5(), self.root, send=True, now=NOW, notify=lambda event, msg: events.append((event, msg)))
         self.assertIn("OPERACION ABIERTA", events[0][1])
+        self.assertIn("Ticket: 9001", events[0][1])
+        self.assertIn("Deal: 9101", events[0][1])
+
+    def test_failed_order_does_not_generate_open_telegram(self):
+        events = []
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            result = build_decisions(
+                FailedOrderMT5(),
+                self.root,
+                send=True,
+                now=NOW,
+                notify=lambda event, msg: events.append((event, msg)),
+            )[0]
+
+        self.assertEqual(result.status, "ERROR")
+        self.assertIn("ORDER_SEND_FAILED", result.reason)
+        self.assertEqual(events, [])
+
+    def test_successful_order_without_reconciliation_does_not_generate_open_telegram(self):
+        events = []
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            result = build_decisions(
+                UnconfirmedOrderMT5(),
+                self.root,
+                send=True,
+                now=NOW,
+                notify=lambda event, msg: events.append((event, msg)),
+            )[0]
+
+        self.assertEqual(result.status, "ERROR")
+        self.assertEqual(result.reason, "ORDER_SENT_BUT_POSITION_NOT_CONFIRMED")
+        self.assertEqual(events, [])
 
     def test_telegram_close(self):
         events = []

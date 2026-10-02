@@ -93,6 +93,14 @@ class FakeMT5:
         return (0, "fake")
 
 
+class ConfirmingFakeMT5(FakeMT5):
+    def order_send(self, request):
+        result = super().order_send(request)
+        if "position" not in request:
+            self.positions.append(_test_position(ticket=result.order))
+        return result
+
+
 def _test_position(ticket=7001, magic=DEMO_TEST_MAGIC, comment=DEMO_TEST_COMMENT):
     return SimpleNamespace(
         ticket=ticket,
@@ -148,6 +156,25 @@ class Mt5DemoTestTests(unittest.TestCase):
 
         self.assertEqual(result.status, "OPENED")
         self.assertEqual([name for name, _ in mt5.calls], ["check", "send"])
+
+    def test_open_without_confirmed_position_does_not_notify(self):
+        mt5 = FakeMT5()
+        events = []
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            result = open_demo_test(mt5, self.root, notify=lambda event, msg: events.append((event, msg)))
+
+        self.assertEqual(result.status, "OPENED")
+        self.assertEqual(events, [])
+
+    def test_confirmed_open_notifies_mock_without_network(self):
+        mt5 = ConfirmingFakeMT5()
+        events = []
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            result = open_demo_test(mt5, self.root, notify=lambda event, msg: events.append((event, msg)))
+
+        self.assertEqual(result.status, "OPENED")
+        self.assertEqual(len(events), 1)
+        self.assertIn("MT5 DEMO - OPERACION ABIERTA", events[0][1])
 
     def test_single_test_order_uses_dedicated_magic_and_comment(self):
         mt5 = FakeMT5()

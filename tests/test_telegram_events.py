@@ -1,10 +1,12 @@
 import io
 import os
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pandas as pd
 
@@ -80,12 +82,30 @@ class TelegramEventsTests(unittest.TestCase):
         self.assertIn("PAPER / SIMULACION", self.sent[0])
         self.assertIn("Volumen simulado: 0.01", self.sent[0])
 
+    def test_mock_open_can_be_tested_without_network(self):
+        fake_requests = SimpleNamespace(post=Mock())
+        with patch.dict(sys.modules, {"requests": fake_requests}):
+            result = te.notify_open(self.root, self.open_row(), send_func=self.sender)
+
+        self.assertTrue(result["sent"])
+        self.assertIn("OPERACION PAPER ABIERTA", self.sent[0])
+        fake_requests.post.assert_not_called()
+
     def test_close_winner(self):
         te.notify_close(self.root, self.close_row(1.82, "TAKE PROFIT"), send_func=self.sender)
 
         self.assertIn("OPERACION PAPER CERRADA", self.sent[0])
         self.assertIn("+$1.82", self.sent[0])
         self.assertIn("+1.82R", self.sent[0])
+
+    def test_mock_close_can_be_tested_without_network(self):
+        fake_requests = SimpleNamespace(post=Mock())
+        with patch.dict(sys.modules, {"requests": fake_requests}):
+            result = te.notify_close(self.root, self.close_row(1.82, "TAKE PROFIT"), send_func=self.sender)
+
+        self.assertTrue(result["sent"])
+        self.assertIn("OPERACION PAPER CERRADA", self.sent[0])
+        fake_requests.post.assert_not_called()
 
     def test_close_loser(self):
         te.notify_close(self.root, self.close_row(-0.96, "STOP LOSS"), send_func=self.sender)
@@ -106,9 +126,28 @@ class TelegramEventsTests(unittest.TestCase):
 
         te.notify_skip_risk(self.root, row, send_func=self.sender)
 
-        self.assertIn("SEÑAL NO EJECUTADA", self.sent[0])
+        self.assertIn("NO EJECUTADA", self.sent[0])
         self.assertIn("0.006", self.sent[0])
         self.assertIn("0.01", self.sent[0])
+
+    def test_mock_skip_risk_can_be_tested_without_network(self):
+        row = self.signal_row()
+        row.update(
+            {
+                "SIGNAL_ID": "S1",
+                "REASON": "MINIMUM_VOLUME_EXCEEDS_RISK",
+                "VOLUME_THEORETICAL": 0.006,
+                "VOLUME_MIN": 0.01,
+            }
+        )
+        fake_requests = SimpleNamespace(post=Mock())
+
+        with patch.dict(sys.modules, {"requests": fake_requests}):
+            result = te.notify_skip_risk(self.root, row, send_func=self.sender)
+
+        self.assertTrue(result["sent"])
+        self.assertIn("NO EJECUTADA", self.sent[0])
+        fake_requests.post.assert_not_called()
 
     def test_error_critico(self):
         te.notify_critical_error(self.root, "EURUSD", "STALE", "DATA_STALE", send_func=self.sender)
@@ -208,6 +247,49 @@ class TelegramEventsTests(unittest.TestCase):
 
         self.assertFalse(result["sent"])
         self.assertTrue((self.root / "logs" / "telegram_errors.log").exists())
+
+    def test_unit_tests_never_call_real_telegram_sender(self):
+        from src.notifier import enviar_telegram
+
+        fake_requests = SimpleNamespace(post=Mock(return_value=SimpleNamespace(ok=True, status_code=200)))
+        with patch.dict(
+            os.environ,
+            {
+                "FOREX_ML_TESTING": "True",
+                "TELEGRAM_BOT_TOKEN": "TEST_TOKEN",
+                "TELEGRAM_CHAT_ID": "TEST_CHAT",
+            },
+            clear=False,
+        ), patch.dict(sys.modules, {"requests": fake_requests}):
+            result = enviar_telegram("no network")
+
+        self.assertFalse(result)
+        fake_requests.post.assert_not_called()
+
+    def test_send_telegram_event_blocks_real_sender_in_tests(self):
+        fake_requests = SimpleNamespace(post=Mock(return_value=SimpleNamespace(ok=True, status_code=200)))
+        with patch.dict(
+            os.environ,
+            {
+                "FOREX_ML_TESTING": "True",
+                "TELEGRAM_BOT_TOKEN": "TEST_TOKEN",
+                "TELEGRAM_CHAT_ID": "TEST_CHAT",
+            },
+            clear=False,
+        ), patch.dict(sys.modules, {"requests": fake_requests}):
+            result = te.send_telegram_event(self.root, "E1", "OPEN", "no network")
+
+        self.assertFalse(result["sent"])
+        self.assertEqual(result["error"], "TELEGRAM_DISABLED_IN_TEST")
+        fake_requests.post.assert_not_called()
+
+    def test_real_demo_telegram_integration_is_preserved_outside_test_mode(self):
+        with patch.dict(os.environ, {"FOREX_ML_TESTING": "False"}, clear=False), \
+                patch("src.notifier.enviar_telegram", return_value=True) as sender:
+            result = te.send_telegram_event(self.root, "DEMO_REAL", "MT5_DEMO", "demo message")
+
+        self.assertTrue(result["sent"])
+        sender.assert_called_once_with("demo message")
 
     def test_secretos_no_impresos(self):
         with patch.dict(

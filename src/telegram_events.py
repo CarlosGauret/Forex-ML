@@ -76,6 +76,12 @@ def telegram_configured():
     return bool(os.getenv("TELEGRAM_BOT_TOKEN") and os.getenv("TELEGRAM_CHAT_ID"))
 
 
+def telegram_real_send_blocked():
+    from src.notifier import testing_mode_enabled
+
+    return testing_mode_enabled()
+
+
 def was_event_sent(root, event_id):
     return any(row.get("EVENT_ID") == event_id for row in _read_events(root))
 
@@ -95,6 +101,9 @@ def send_telegram_event(
 
     try:
         if send_func is None:
+            if telegram_real_send_blocked():
+                _log_telegram_error(root, event_id, "real telegram disabled in tests")
+                return {"sent": False, "duplicate": False, "error": "TELEGRAM_DISABLED_IN_TEST"}
             from src.notifier import enviar_telegram
 
             send_func = enviar_telegram

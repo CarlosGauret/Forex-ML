@@ -4,7 +4,7 @@ PROB_THRESHOLDS = [0.55, 0.60, 0.65]
 COST_BPS = [0, 1, 2, 5]
 
 TRADING_ENABLED = False
-DEMO_EXECUTION_ENABLED = True
+DEMO_EXECUTION_ENABLED = False
 
 # Risk is configured in percent for readability and converted to ratios for
 # existing modules/tests that already import the older names.

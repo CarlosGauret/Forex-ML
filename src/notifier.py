@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 
@@ -12,7 +13,19 @@ def _cargar_env():
     load_dotenv(raiz / ".env")
 
 
+def testing_mode_enabled():
+    value = os.getenv("FOREX_ML_TESTING", "").strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return "unittest" in sys.modules or "pytest" in sys.modules
+
+
 def enviar_telegram(mensaje):
+    if testing_mode_enabled():
+        return False
+
     _cargar_env()
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")

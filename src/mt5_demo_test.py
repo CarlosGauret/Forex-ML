@@ -312,7 +312,7 @@ def open_demo_test(mt5, root, notify=None, now=None):
         tp=context["tp"],
         now=now,
     )
-    if ok:
+    if ok and _confirmed_test_position(mt5, order_ticket) is not None:
         _notify_open(root, notify, context["symbol"], DEMO_TEST_VOLUME, executed_price)
     return _base_result(
         status,
@@ -425,6 +425,15 @@ def _notify_open(root, notify, symbol, volume, price):
         f"Precio: {price}",
     ])
     _notify(root, notify, "MT5_DEMO_TEST_OPEN", message)
+
+
+def _confirmed_test_position(mt5, ticket):
+    for position in (mt5.positions_get() or []):
+        if str(_value(position, "ticket")) == str(ticket):
+            return position
+        if _value(position, "magic") == DEMO_TEST_MAGIC and _value(position, "comment") == DEMO_TEST_COMMENT:
+            return position
+    return None
 
 
 def _notify_close(root, notify, symbol, profit):

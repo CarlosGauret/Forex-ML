@@ -533,7 +533,8 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
         ticket = _value(sent, "order")
         deal = _value(sent, "deal")
         ok = retcode in (RETCODE_DONE, RETCODE_PLACED)
-        if ok and not _confirmed_position(mt5, ticket, signal.asset):
+        confirmed_position = _confirmed_position(mt5, ticket, signal.asset) if ok else None
+        if ok and confirmed_position is None:
             ok = False
             reason = "ORDER_SENT_BUT_POSITION_NOT_CONFIRMED"
         else:
@@ -560,7 +561,8 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
             "event": "OPEN",
         }, now=now)
         if ok:
-            _notify_open(root, notify, signal, symbol, volume, price, sl, tp, estimated_loss, ticket)
+            confirmed_ticket = _value(confirmed_position, "ticket", ticket)
+            _notify_open(root, notify, signal, symbol, volume, price, sl, tp, estimated_loss, confirmed_ticket, deal)
         decisions.append(DemoDecision(exec_id, tuple(config_ids), signal.asset, symbol, signal.direction,
                                       signal.bar_timestamp, age, status, reason, price=price, sl=sl, tp=tp,
                                       volume=volume, theoretical_volume=sizing.theoretical_volume,
@@ -577,11 +579,12 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
 def _confirmed_position(mt5, ticket, asset):
     comment = COMMENT_BY_ASSET[asset]
     magic = MAGIC_BY_ASSET[asset]
-    return any(
-        str(_value(position, "ticket")) == str(ticket) or
-        (_value(position, "magic") == magic and _value(position, "comment") == comment)
-        for position in (mt5.positions_get() or [])
-    )
+    for position in (mt5.positions_get() or []):
+        if str(_value(position, "ticket")) == str(ticket):
+            return position
+        if _value(position, "magic") == magic and _value(position, "comment") == comment:
+            return position
+    return None
 
 
 def close_due_positions(mt5, root, notify=None, now=None, max_hold_bars=24):
@@ -661,7 +664,7 @@ def _notify(root, notify, event_id, message, asset, config_id):
         return
 
 
-def _notify_open(root, notify, signal, symbol, volume, price, sl, tp, risk, ticket):
+def _notify_open(root, notify, signal, symbol, volume, price, sl, tp, risk, ticket, deal):
     message = "\n".join([
         "MT5 DEMO - OPERACION ABIERTA",
         f"Activo: {signal.asset}",
@@ -672,6 +675,7 @@ def _notify_open(root, notify, signal, symbol, volume, price, sl, tp, risk, tick
         f"Volumen: {volume}",
         f"Riesgo USD: {risk}",
         f"Ticket: {ticket}",
+        f"Deal: {deal}",
         f"Estrategia: {signal.config_id}",
         "DEMO / SIN DINERO REAL",
     ])
