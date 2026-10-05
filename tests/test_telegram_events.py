@@ -283,6 +283,19 @@ class TelegramEventsTests(unittest.TestCase):
         self.assertEqual(result["error"], "TELEGRAM_DISABLED_IN_TEST")
         fake_requests.post.assert_not_called()
 
+    def test_numpy_importing_unittest_does_not_block_production_telegram(self):
+        import numpy.testing  # noqa: F401  (importa unittest, como ocurre en produccion)
+        from src.notifier import testing_mode_enabled
+
+        fake_main = SimpleNamespace(__spec__=None)
+        env = {k: v for k, v in os.environ.items() if k != "FOREX_ML_TESTING"}
+        with patch.dict(os.environ, env, clear=True), \
+                patch.dict(sys.modules, {"__main__": fake_main}), \
+                patch.dict(sys.modules, {"pytest": None}):
+            sys.modules.pop("pytest", None)
+            self.assertIn("unittest", sys.modules)
+            self.assertFalse(testing_mode_enabled())
+
     def test_real_demo_telegram_integration_is_preserved_outside_test_mode(self):
         with patch.dict(os.environ, {"FOREX_ML_TESTING": "False"}, clear=False), \
                 patch("src.notifier.enviar_telegram", return_value=True) as sender:

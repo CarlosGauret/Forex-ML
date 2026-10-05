@@ -11,6 +11,11 @@ from pathlib import Path
 from config import DEMO_EXECUTION_ENABLED, TRADING_ENABLED
 
 
+RUNNER_COMMANDS = ["PAPER", "PAPER EURUSD", "MT5 DEMO AUTO RUN", "LIVE PORTFOLIO"]
+# El resumen diario de Telegram solo se agrega desde las 17:00 (hora local).
+EXPECTED_RUNNER_COMMANDS = [RUNNER_COMMANDS, RUNNER_COMMANDS + ["TELEGRAM DAILY"]]
+
+
 class RunnerBatTests(unittest.TestCase):
     def make_runner_project(self, main_source=None):
         tmp = tempfile.TemporaryDirectory(dir=Path.cwd())
@@ -75,14 +80,17 @@ class RunnerBatTests(unittest.TestCase):
         self.assertLess(gold, eurusd)
         self.assertLess(eurusd, auto)
 
-    def test_run_paper_uses_auto_log_and_not_portfolio(self):
+    def test_run_paper_runs_portfolio_after_forwards(self):
         text = Path("run_paper.bat").read_text(encoding="utf-8")
 
         self.assertIn("mt5_demo_auto_runner.log", text)
-        self.assertNotIn("live_portfolio_runner.log", text)
+        self.assertIn("live_portfolio_runner.log", text)
+        # Los forwards EURUSD/GOLD se ejecutan solo via MT5 DEMO AUTO, nunca via LIVE.
         self.assertNotIn("@('LIVE', 'GOLD')", text)
         self.assertNotIn("@('LIVE', 'EURUSD')", text)
-        self.assertNotIn("@('LIVE', 'PORTFOLIO')", text)
+        auto = text.index("@('MT5', 'DEMO', 'AUTO', 'RUN') $autoLog")
+        portfolio = text.index("@('LIVE', 'PORTFOLIO') $portfolioLog")
+        self.assertLess(auto, portfolio)
 
     def test_flags_remain_safe_by_default(self):
         self.assertIs(TRADING_ENABLED, False)
@@ -97,7 +105,7 @@ class RunnerBatTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertFalse((root / "paper" / "paper.lock").exists())
             args = (root / "logs" / "args.txt").read_text(encoding="utf-8").splitlines()
-            self.assertEqual(args, ["PAPER", "PAPER EURUSD", "MT5 DEMO AUTO RUN"])
+            self.assertIn(args, EXPECTED_RUNNER_COMMANDS)
             self.assertNotIn("STALE LOCK DETECTED", self.read_summary_log(root))
 
     @unittest.skipIf(os.name != "nt", "run_paper.bat lock behavior is Windows-only")
@@ -220,7 +228,7 @@ class RunnerBatTests(unittest.TestCase):
             self.assertEqual(first.returncode, 0, first_stderr or first_stdout)
             self.assertEqual(second.returncode, 0, second.stderr)
             args = (root / "logs" / "args.txt").read_text(encoding="utf-8").splitlines()
-            self.assertEqual(args, ["PAPER", "PAPER EURUSD", "MT5 DEMO AUTO RUN"])
+            self.assertIn(args, EXPECTED_RUNNER_COMMANDS)
             self.assertIn("PAPER ya esta en ejecucion. PID activo:", self.read_summary_log(root))
 
     @unittest.skipIf(os.name != "nt", "run_paper.bat lock behavior is Windows-only")

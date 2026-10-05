@@ -21,6 +21,7 @@ from config import (
     BREAK_EVEN_TRIGGER_R,
     EXIT_MODE,
     MAX_SPREAD_ATR_RATIO_BY_ASSET,
+    MAX_TRADES_PER_DAY,
     TRAILING_DISTANCE_R,
     TRAILING_START_R,
 )
@@ -43,6 +44,7 @@ DEVIATION_POINTS = 20
 MAX_SEND_ATTEMPTS = 3
 RETRY_SLEEP_SECONDS = 0.5
 HISTORY_LOOKBACK_DAYS = 30
+PERU_TZ = timezone(timedelta(hours=-5))
 
 RETCODE_PLACED = 10008
 RETCODE_DONE = 10009
@@ -189,6 +191,56 @@ def append_journal(root, result, now=None):
         if new_file:
             writer.writeheader()
         writer.writerow(row)
+
+
+def forward_journal_path(root):
+    return Path(root) / "live" / "forward_demo_orders.csv"
+
+
+def _parse_utc(value):
+    try:
+        ts = datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+    return ts if ts.tzinfo is not None else ts.replace(tzinfo=timezone.utc)
+
+
+def trades_opened_today(root, now=None):
+    """Aperturas DEMO del dia (hora Peru) sumando portafolio y forwards, segun los logs locales."""
+    now = now or _now_utc()
+    start = now.astimezone(PERU_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    sources = (
+        (journal_path(root), "TIMESTAMP_UTC", lambda row: row.get("STATUS") == STATUS_SENT),
+        (forward_journal_path(root), "timestamp",
+         lambda row: row.get("status") == STATUS_SENT and row.get("event") == "OPEN"),
+    )
+    count = 0
+    for path, time_key, is_open in sources:
+        if not path.exists():
+            continue
+        with path.open(newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                timestamp = _parse_utc(row.get(time_key, ""))
+                if is_open(row) and timestamp is not None and timestamp >= start:
+                    count += 1
+    return count
+
+
+def daily_trade_limit_reached(root, now=None, limit=None):
+    limit = MAX_TRADES_PER_DAY if limit is None else limit
+    return trades_opened_today(root, now) >= limit
+
+
+def daily_limit_event(now=None):
+    day = (now or _now_utc()).astimezone(PERU_TZ).strftime("%Y%m%d")
+    message = "\n".join([
+        "⏸️ LIMITE DIARIO ALCANZADO",
+        f"Ya se abrieron {MAX_TRADES_PER_DAY} operaciones hoy.",
+        "No se abriran operaciones nuevas hasta manana (hora Peru).",
+        "Las posiciones abiertas siguen con su SL/TP.",
+        "DEMO / SIN DINERO REAL",
+    ])
+    return f"DAILY_TRADE_LIMIT|{day}", message
 
 
 def bot_positions(mt5, magic=MAGIC_NUMBER):
@@ -346,6 +398,10 @@ def execute_signal(
         return skip("INVALID_DIRECTION")
     if kill_switch_active(root):
         return skip("KILL_SWITCH_ACTIVE")
+    if daily_trade_limit_reached(root, now):
+        if not dry_run:
+            _notify(notify, *daily_limit_event(now))
+        return skip("DAILY_TRADE_LIMIT")
 
     account = mt5.account_info()
     gate = evaluate_demo_account(mt5, account) if dry_run else evaluate_demo_order_gate(mt5, account)

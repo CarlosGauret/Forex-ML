@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -47,68 +48,48 @@ def _asegurar_indicadores(df):
     return calcular_indicadores(df)
 
 
+def _crear_target(datos, direccion, horizonte=24):
+    """1 si toca TP (2 ATR) antes que SL (1 ATR) en las proximas `horizonte` velas, 0 si toca
+    SL primero (SL gana si ambos caen en la misma vela), NA si no toca ninguno."""
+    close = pd.to_numeric(datos["Close"], errors="coerce").to_numpy(dtype=float)
+    atr = pd.to_numeric(datos["ATR"], errors="coerce").to_numpy(dtype=float)
+    high = pd.to_numeric(datos["High"], errors="coerce").to_numpy(dtype=float)
+    low = pd.to_numeric(datos["Low"], errors="coerce").to_numpy(dtype=float)
+    n = len(close)
+    signo = 1 if direccion == "LONG" else -1
+    take_profit = close + signo * 2 * atr
+    stop_loss = close - signo * atr
+
+    objetivo = np.full(n, np.nan)
+    pendiente = ~(np.isnan(close) | np.isnan(atr) | (atr <= 0))
+    for k in range(1, horizonte + 1):
+        if k >= n:
+            break
+        idx = np.arange(n - k)
+        futuro_high = high[idx + k]
+        futuro_low = low[idx + k]
+        if signo == 1:
+            toca_sl = futuro_low <= stop_loss[idx]
+            toca_tp = futuro_high >= take_profit[idx]
+        else:
+            toca_sl = futuro_high >= stop_loss[idx]
+            toca_tp = futuro_low <= take_profit[idx]
+        activos = pendiente[idx]
+        perdida = activos & toca_sl
+        ganancia = activos & ~toca_sl & toca_tp
+        objetivo[idx[perdida]] = 0
+        objetivo[idx[ganancia]] = 1
+        pendiente[idx[perdida | ganancia]] = False
+
+    return pd.array([pd.NA if np.isnan(v) else int(v) for v in objetivo], dtype="object")
+
+
 def _crear_target_long(datos, horizonte=24):
-    targets = []
-
-    for i in range(len(datos)):
-        fila = datos.iloc[i]
-        close = fila["Close"]
-        atr = fila["ATR"]
-
-        if pd.isna(close) or pd.isna(atr) or atr <= 0:
-            targets.append(pd.NA)
-            continue
-
-        take_profit = close + (2 * atr)
-        stop_loss = close - (1 * atr)
-        objetivo = pd.NA
-
-        for j in range(i + 1, min(i + horizonte + 1, len(datos))):
-            futura = datos.iloc[j]
-
-            if futura["Low"] <= stop_loss:
-                objetivo = 0
-                break
-
-            if futura["High"] >= take_profit:
-                objetivo = 1
-                break
-
-        targets.append(objetivo)
-
-    return targets
+    return list(_crear_target(datos, "LONG", horizonte))
 
 
 def _crear_target_short(datos, horizonte=24):
-    targets = []
-
-    for i in range(len(datos)):
-        fila = datos.iloc[i]
-        close = fila["Close"]
-        atr = fila["ATR"]
-
-        if pd.isna(close) or pd.isna(atr) or atr <= 0:
-            targets.append(pd.NA)
-            continue
-
-        take_profit = close - (2 * atr)
-        stop_loss = close + (1 * atr)
-        objetivo = pd.NA
-
-        for j in range(i + 1, min(i + horizonte + 1, len(datos))):
-            futura = datos.iloc[j]
-
-            if futura["High"] >= stop_loss:
-                objetivo = 0
-                break
-
-            if futura["Low"] <= take_profit:
-                objetivo = 1
-                break
-
-        targets.append(objetivo)
-
-    return targets
+    return list(_crear_target(datos, "SHORT", horizonte))
 
 
 def crear_dataset_ml(df):

@@ -14,7 +14,15 @@ import pandas as pd
 
 import config
 from src.execution_demo import DEMO_DISABLED_REASON, evaluate_demo_account
-from src.live_executor import RETCODE_DONE, RETCODE_PLACED, _filling_mode, mt5_session
+from src.live_executor import (
+    RETCODE_DONE,
+    RETCODE_PLACED,
+    _filling_mode,
+    daily_limit_event,
+    daily_trade_limit_reached,
+    kill_switch_active,
+    mt5_session,
+)
 from src.risk import BUY, RiskLimits, RiskManager
 from src.symbols import discover_symbols
 
@@ -29,6 +37,11 @@ EURUSD_EXPECTED_HASH = "b7d2136797e433bb3f2a59170b77569570c60c58f0cf7f75ba19f4ae
 MAGIC_BY_ASSET = {"EURUSD": 561001, "GOLD": 561002}
 COMMENT_BY_ASSET = {"EURUSD": "FOREX_ML_EURUSD_DEMO", "GOLD": "FOREX_ML_GOLD_DEMO"}
 MAX_DEMO_POSITIONS = 2
+HISTORY_LOOKBACK_DAYS = 30
+CLOSE_NOTIFY_LOOKBACK_DAYS = 3
+UNCONFIRMED_REASON = "ORDER_SENT_BUT_POSITION_NOT_CONFIRMED"
+DEAL_ENTRY_OUT = 1
+DEAL_REASONS = {0: "MANUAL", 1: "MANUAL (movil)", 2: "MANUAL (web)", 3: "BOT", 4: "STOP LOSS", 5: "TAKE PROFIT", 6: "STOP OUT"}
 PERU_TZ = timezone(timedelta(hours=-5))
 LOG_COLUMNS = [
     "timestamp",
@@ -306,17 +319,37 @@ def _executed_ids(root):
     return {
         row.get("execution_id")
         for row in _read_log(root)
-        if row.get("status") in {"SENT", "CONFIRMED", "CLOSED"} and row.get("execution_id")
+        if row.get("execution_id")
+        and (
+            row.get("status") in {"SENT", "CONFIRMED", "CLOSED"}
+            # La orden pudo haberse llenado aunque la posicion no se viera al instante:
+            # nunca reenviar esa senal.
+            or row.get("reason") == UNCONFIRMED_REASON
+        )
     }
 
 
-def reconcile(mt5, root):
+def _bot_deals(mt5, now=None, days=HISTORY_LOOKBACK_DAYS):
+    now = now or _now_utc()
+    deals = mt5.history_deals_get(now - timedelta(days=days), now + timedelta(days=1)) or []
+    magics = set(MAGIC_BY_ASSET.values())
+    return [deal for deal in deals if _value(deal, "magic") in magics]
+
+
+def reconcile(mt5, root, now=None):
     positions = _demo_positions(mt5)
     open_tickets = {str(_value(position, "ticket")) for position in positions}
-    sent_rows = [row for row in _read_log(root) if row.get("status") in {"SENT", "CONFIRMED"}]
+    rows = _read_log(root)
+    # Una posicion cerrada por SL/TP del broker (o por MAX_HOLD) ya no esta abierta,
+    # pero si aparece en el historial de deals o en el log local como CLOSED.
+    closed_tickets = {str(_value(deal, "position_id")) for deal in _bot_deals(mt5, now=now)}
+    closed_tickets |= {row.get("ticket") for row in rows if row.get("event") == "CLOSE" and row.get("status") == "CLOSED"}
+    sent_rows = [row for row in rows if row.get("status") in {"SENT", "CONFIRMED"}]
     missing = [
         row for row in sent_rows
-        if row.get("ticket") and row.get("ticket") not in open_tickets
+        if row.get("ticket")
+        and row.get("ticket") not in open_tickets
+        and row.get("ticket") not in closed_tickets
     ]
     return {
         "ok": not missing,
@@ -382,8 +415,20 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
             decisions.append(_decision_wait(signal, config_ids, gate_reason, now))
         return decisions
 
-    reconciliation = reconcile(mt5, root)
+    if send and kill_switch_active(root):
+        for signal, config_ids in dedupe_signals(load_forward_signals(root)):
+            decisions.append(_decision_wait(signal, config_ids, "KILL_SWITCH_ACTIVE", now))
+        return decisions
+
+    reconciliation = reconcile(mt5, root, now=now)
     if not reconciliation["ok"]:
+        tickets = ",".join(sorted(str(row.get("ticket")) for row in reconciliation["missing_local_in_mt5"]))
+        _notify(root, notify, f"RECONCILIATION|{tickets}", "\n".join([
+            "MT5 DEMO - BOT BLOQUEADO (RECONCILIACION)",
+            f"Tickets del log no encontrados en MT5: {tickets}",
+            "No se abriran operaciones nuevas hasta revisar el log live/forward_demo_orders.csv.",
+            "DEMO / SIN DINERO REAL",
+        ]), "ALL", "MT5_DEMO_AUTO")
         for signal, config_ids in dedupe_signals(load_forward_signals(root)):
             decisions.append(_decision_wait(signal, config_ids, "ERROR / RECONCILIATION_REQUIRED", now))
         return decisions
@@ -420,6 +465,11 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
         if exec_id in executed:
             decisions.append(DemoDecision(exec_id, tuple(config_ids), signal.asset, symbol, signal.direction,
                                           signal.bar_timestamp, age, "SKIP", "DUPLICATE_EXECUTION_ID"))
+            continue
+        if send and daily_trade_limit_reached(root, now):
+            _notify(root, notify, *daily_limit_event(now), signal.asset, "MT5_DEMO_AUTO")
+            decisions.append(DemoDecision(exec_id, tuple(config_ids), signal.asset, symbol, signal.direction,
+                                          signal.bar_timestamp, age, "SKIP", "DAILY_TRADE_LIMIT"))
             continue
         tick = mt5.symbol_info_tick(symbol)
         info = mt5.symbol_info(symbol)
@@ -515,6 +565,9 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
                                           bid=bid, ask=ask, signal_source=_signal_source(signal.asset),
                                           sl_distance=sl_distance, tp_distance=tp_distance,
                                           **broker_metadata))
+            if send:
+                _notify_error(root, notify, signal.asset, f"CHECK|{exec_id}",
+                              f"ORDER_CHECK_FAILED: {check_comment}", check_retcode)
             continue
         if not send:
             decisions.append(DemoDecision(exec_id, tuple(config_ids), signal.asset, symbol, signal.direction,
@@ -536,7 +589,7 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
         confirmed_position = _confirmed_position(mt5, ticket, signal.asset) if ok else None
         if ok and confirmed_position is None:
             ok = False
-            reason = "ORDER_SENT_BUT_POSITION_NOT_CONFIRMED"
+            reason = UNCONFIRMED_REASON
         else:
             reason = "OK" if ok else f"ORDER_SEND_FAILED: {_value(sent, 'comment', mt5.last_error())}"
         status = "SENT" if ok else "ERROR"
@@ -563,6 +616,8 @@ def build_decisions(mt5, root, send=False, now=None, notify=None):
         if ok:
             confirmed_ticket = _value(confirmed_position, "ticket", ticket)
             _notify_open(root, notify, signal, symbol, volume, price, sl, tp, estimated_loss, confirmed_ticket, deal)
+        else:
+            _notify_error(root, notify, signal.asset, f"OPEN|{exec_id}", reason, retcode)
         decisions.append(DemoDecision(exec_id, tuple(config_ids), signal.asset, symbol, signal.direction,
                                       signal.bar_timestamp, age, status, reason, price=price, sl=sl, tp=tp,
                                       volume=volume, theoretical_volume=sizing.theoretical_volume,
@@ -596,9 +651,14 @@ def close_due_positions(mt5, root, notify=None, now=None, max_hold_bars=24):
     for position in _demo_positions(mt5):
         symbol = _value(position, "symbol")
         tick = mt5.symbol_info_tick(symbol)
+        server_now = int(_value(tick, "time", 0) or 0)
         rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, max_hold_bars + 100)
         opened = int(_value(position, "time", 0) or 0)
-        held = 0 if rates is None else sum(1 for rate in rates if int(rate["time"]) > opened)
+        # Solo velas H1 cerradas (igual que BARS_HELD del PAPER): la vela en curso no cuenta.
+        held = 0 if rates is None or server_now <= 0 else sum(
+            1 for rate in rates
+            if int(rate["time"]) > opened and int(rate["time"]) + 3600 <= server_now
+        )
         if held < max_hold_bars:
             continue
         is_buy = _value(position, "type") == mt5.POSITION_TYPE_BUY
@@ -621,6 +681,8 @@ def close_due_positions(mt5, root, notify=None, now=None, max_hold_bars=24):
         check = mt5.order_check(request)
         check_retcode = _value(check, "retcode")
         if check_retcode not in (0, RETCODE_DONE, RETCODE_PLACED):
+            _notify_error(root, notify, asset, f"CLOSE_CHECK|{_value(position, 'ticket')}",
+                          f"No se pudo cerrar por MAX_HOLD: {_value(check, 'comment', '')}", check_retcode)
             continue
         sent = mt5.order_send(request)
         retcode = _value(sent, "retcode")
@@ -648,6 +710,69 @@ def close_due_positions(mt5, root, notify=None, now=None, max_hold_bars=24):
         _append_log(root, row, now=now)
         if ok:
             _notify_close(root, notify, asset, symbol, position, price, profit, held, account)
+        else:
+            _notify_error(root, notify, asset, f"CLOSE|{_value(position, 'ticket')}", reason, retcode)
+        results.append(row)
+    return results
+
+
+def _asset_for_magic(magic):
+    return next((asset for asset, value in MAGIC_BY_ASSET.items() if value == magic), "")
+
+
+def sync_broker_closes(mt5, root, notify=None, now=None):
+    """Registra y avisa por Telegram los cierres hechos por el broker (SL/TP/stop out/manual).
+
+    Los cierres por MAX_HOLD ya quedan en el log y comparten EVENT_ID con
+    _notify_close, asi que Telegram avisa una sola vez por posicion.
+    """
+    now = now or _now_utc()
+    logged = {row.get("ticket") for row in _read_log(root) if row.get("event") == "CLOSE" and row.get("status") == "CLOSED"}
+    results = []
+    for deal in _bot_deals(mt5, now=now, days=CLOSE_NOTIFY_LOOKBACK_DAYS):
+        if _value(deal, "entry") != getattr(mt5, "DEAL_ENTRY_OUT", DEAL_ENTRY_OUT):
+            continue
+        ticket = str(_value(deal, "position_id"))
+        if ticket in logged:
+            continue
+        asset = _asset_for_magic(_value(deal, "magic"))
+        profit = float(_value(deal, "profit", 0) or 0)
+        commission = float(_value(deal, "commission", 0) or 0)
+        swap = float(_value(deal, "swap", 0) or 0)
+        fee = float(_value(deal, "fee", 0) or 0)
+        net = profit + commission + swap + fee
+        motivo = DEAL_REASONS.get(_value(deal, "reason"), str(_value(deal, "reason")))
+        row = {
+            "status": "CLOSED",
+            "reason": motivo,
+            "execution_id": f"CLOSE|{ticket}",
+            "asset": asset,
+            "symbol": _value(deal, "symbol"),
+            "volume": _value(deal, "volume"),
+            "price": _value(deal, "price"),
+            "ticket": ticket,
+            "deal": _value(deal, "ticket"),
+            "comment": COMMENT_BY_ASSET.get(asset, ""),
+            "event": "CLOSE",
+            "profit": profit,
+            "commission": commission,
+            "swap": swap,
+        }
+        _append_log(root, row, now=now)
+        logged.add(ticket)
+        account = mt5.account_info()
+        header = "MT5 DEMO - OPERACION CERRADA ✅" if net >= 0 else "MT5 DEMO - OPERACION CERRADA 🔴"
+        _notify(root, notify, f"CLOSE|{asset}|{ticket}", "\n".join([
+            header,
+            f"Activo: {asset} ({_value(deal, 'symbol')})",
+            f"Motivo: {motivo}",
+            f"Precio cierre: {_value(deal, 'price')}",
+            f"Volumen: {_value(deal, 'volume')}",
+            f"Resultado USD: {net:+.2f}",
+            f"Ticket: {ticket}",
+            f"Balance/equity actual: {_value(account, 'balance', 'N/A')}/{_value(account, 'equity', 'N/A')}",
+            "DEMO / SIN DINERO REAL",
+        ]), asset, "MT5_DEMO_AUTO")
         results.append(row)
     return results
 
@@ -680,6 +805,17 @@ def _notify_open(root, notify, signal, symbol, volume, price, sl, tp, risk, tick
         "DEMO / SIN DINERO REAL",
     ])
     _notify(root, notify, f"OPEN|{signal.config_id}|{signal.bar_timestamp}", message, signal.asset, signal.config_id)
+
+
+def _notify_error(root, notify, asset, event_key, reason, retcode=None):
+    message = "\n".join([
+        "🚨 MT5 DEMO - ERROR DE EJECUCION",
+        f"Activo: {asset}",
+        f"Detalle: {reason}",
+        f"Retcode: {retcode}",
+        "DEMO / SIN DINERO REAL",
+    ])
+    _notify(root, notify, f"ERROR|{event_key}", message, asset, "MT5_DEMO_AUTO")
 
 
 def _notify_skip_risk(root, notify, signal, sizing):
@@ -875,4 +1011,7 @@ def run_status(root, mt5_factory=mt5_session, now=None):
 def run_auto(root, mt5_factory=mt5_session, now=None, notify=None):
     with mt5_factory() as mt5:
         close_due_positions(mt5, root, notify=notify, now=now)
+        gate_ok, _, _ = _account_gate(mt5, require_flag=False)
+        if gate_ok:
+            sync_broker_closes(mt5, root, notify=notify, now=now)
         return build_decisions(mt5, root, send=True, now=now, notify=notify)

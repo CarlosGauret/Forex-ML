@@ -15,6 +15,7 @@ from src.mt5_demo_auto import (
     MAGIC_BY_ASSET,
     close_due_positions,
     run_auto,
+    sync_broker_closes,
     build_decisions,
 )
 
@@ -413,7 +414,9 @@ class Mt5DemoAutoTests(unittest.TestCase):
 
         self.assertEqual(result.status, "ERROR")
         self.assertIn("ORDER_SEND_FAILED", result.reason)
-        self.assertEqual(events, [])
+        self.assertFalse(any("OPERACION ABIERTA" in msg for _, msg in events))
+        self.assertEqual(len(events), 1)
+        self.assertIn("ERROR DE EJECUCION", events[0][1])
 
     def test_successful_order_without_reconciliation_does_not_generate_open_telegram(self):
         events = []
@@ -428,7 +431,8 @@ class Mt5DemoAutoTests(unittest.TestCase):
 
         self.assertEqual(result.status, "ERROR")
         self.assertEqual(result.reason, "ORDER_SENT_BUT_POSITION_NOT_CONFIRMED")
-        self.assertEqual(events, [])
+        self.assertFalse(any("OPERACION ABIERTA" in msg for _, msg in events))
+        self.assertIn("ERROR DE EJECUCION", events[0][1])
 
     def test_telegram_close(self):
         events = []
@@ -462,6 +466,80 @@ class Mt5DemoAutoTests(unittest.TestCase):
         with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
             close_due_positions(mt5, self.root, now=NOW)
         self.assertEqual(mt5.calls, [])
+
+    def _close_deal(self, ticket, reason=5, profit=2.0):
+        return SimpleNamespace(ticket=ticket + 500, position_id=ticket, entry=1, magic=MAGIC_BY_ASSET["EURUSD"],
+                               symbol="EURUSD", volume=0.01, price=1.102, reason=reason, profit=profit,
+                               commission=0.0, swap=0.0, fee=0.0)
+
+    def test_broker_close_does_not_block_next_signal(self):
+        mt5 = FakeMT5()
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            first = build_decisions(mt5, self.root, send=True, now=NOW)[0]
+            ticket = mt5.positions[0].ticket
+            mt5.positions = []
+            mt5.deals = [self._close_deal(ticket)]
+            next_now = NOW + timedelta(hours=1)
+            _write_root(self.root, bar="2026-10-01T11:00:00")
+            second = build_decisions(mt5, self.root, send=True, now=next_now)[0]
+        self.assertEqual(first.status, "SENT")
+        self.assertEqual(second.status, "SENT")
+
+    def test_daily_trade_limit_blocks_forward_send(self):
+        live = self.root / "live"
+        live.mkdir()
+        with (live / "orders.csv").open("w", encoding="utf-8") as handle:
+            handle.write("TIMESTAMP_UTC,STATUS,SIGNAL_ID\n")
+            handle.writelines(f"{NOW.isoformat()},SENT,P{i}\n" for i in range(10))
+        mt5 = FakeMT5()
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            result = build_decisions(mt5, self.root, send=True, now=NOW)[0]
+        self.assertEqual(result.reason, "DAILY_TRADE_LIMIT")
+        self.assertEqual([c for c in mt5.calls if c[0] == "send"], [])
+
+    def test_kill_switch_blocks_send(self):
+        (self.root / "STOP_TRADING").touch()
+        mt5 = FakeMT5()
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            result = build_decisions(mt5, self.root, send=True, now=NOW)[0]
+        self.assertEqual(result.reason, "KILL_SWITCH_ACTIVE")
+        self.assertEqual([c for c in mt5.calls if c[0] == "send"], [])
+
+    def test_unconfirmed_order_is_never_resent(self):
+        mt5 = UnconfirmedOrderMT5()
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            build_decisions(mt5, self.root, send=True, now=NOW)
+            second = build_decisions(mt5, self.root, send=True, now=NOW)[0]
+        self.assertEqual(second.reason, "DUPLICATE_EXECUTION_ID")
+        self.assertEqual(len([c for c in mt5.calls if c[0] == "send"]), 1)
+
+    def test_broker_sl_tp_close_is_logged_and_notified_once(self):
+        events = []
+        mt5 = FakeMT5()
+        mt5.deals = [self._close_deal(4242, reason=4, profit=-1.0)]
+        notify = lambda event, msg: events.append((event, msg))
+        sync_broker_closes(mt5, self.root, notify=notify, now=NOW)
+        sync_broker_closes(mt5, self.root, notify=notify, now=NOW)
+        self.assertEqual(len(events), 1)
+        self.assertIn("STOP LOSS", events[0][1])
+        self.assertIn("-1.00", events[0][1])
+        rows = list(csv.DictReader((self.root / "live" / "forward_demo_orders.csv").open(encoding="utf-8")))
+        self.assertEqual([(r["event"], r["ticket"]) for r in rows], [("CLOSE", "4242")])
+
+    def test_max_hold_ignores_bar_still_forming(self):
+        mt5 = FakeMT5()
+        tick_time = mt5.ticks["EURUSD"].time
+        # Abierta hace 24h + 10 min: solo 23 velas cerradas despues de la entrada + 1 en curso.
+        mt5.ticks["EURUSD"] = SimpleNamespace(bid=1.1, ask=1.1001, time=tick_time + 600)
+        mt5.copy_rates_from_pos = lambda symbol, tf, start, count: [
+            {"time": tick_time - (24 - i) * 3600} for i in range(25)
+        ]
+        mt5.positions = [SimpleNamespace(ticket=8, symbol="EURUSD", type=0, volume=0.01,
+                                         magic=MAGIC_BY_ASSET["EURUSD"], comment=COMMENT_BY_ASSET["EURUSD"],
+                                         time=tick_time - 24 * 3600, price_open=1.1, profit=0.0)]
+        with patch.object(config, "DEMO_EXECUTION_ENABLED", True):
+            closed = close_due_positions(mt5, self.root, now=NOW)
+        self.assertEqual(closed, [])
 
 
 if __name__ == "__main__":

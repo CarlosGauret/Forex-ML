@@ -21,8 +21,10 @@ import pandas as pd
 from config import (
     DEMO_EXECUTION_ENABLED,
     DEMO_PORTFOLIO_ASSETS,
+    DEMO_PORTFOLIO_DISABLED_DIRECTIONS,
     DEMO_PORTFOLIO_MAX_POSITIONS,
     DEMO_PORTFOLIO_THRESHOLD,
+    MAX_POSITIONS_PER_CURRENCY,
     MT5_SERVER_UTC_OFFSETS,
 )
 from src.features import crear_dataset_ml
@@ -37,6 +39,18 @@ from src.live_executor import (
     telegram_notifier,
 )
 from src.model import FEATURES_ML, _crear_modelo
+from src.portfolio_research import (
+    add_strategy_columns,
+    add_trend_columns,
+    currency_exposure_allowed,
+    exit_params,
+    load_mt5_prices,
+    load_selection,
+    mt5_data_path,
+    rule_signals,
+    target_for_stop,
+    trend_allows,
+)
 from src.risk import BUY, SELL, RiskLimits, RiskManager
 from src.symbols import discover_symbols
 
@@ -46,7 +60,7 @@ MODEL_NAME = "LOGISTIC"
 STOP_ATR = 1.0
 TAKE_PROFIT_ATR = 2.0
 MAX_HOLD_BARS = 24
-MT5_RATES_COUNT = 1000
+MT5_RATES_COUNT = 6000  # el filtro de tendencia usa una EMA de 1200 velas H1
 HOLDOUT_FRACTION = 0.2
 EMBARGO_BARS = 24
 DIRECTIONS = {"LONG": ("TARGET_LONG", BUY), "SHORT": ("TARGET_SHORT", SELL)}
@@ -68,8 +82,9 @@ def model_path(root, asset, direction):
     return model_dir(root) / f"{asset.lower()}_{direction.lower()}_logistic.pkl"
 
 
-def config_id(asset, direction):
-    return f"{CONFIG_PREFIX}_{asset}_{direction}_{MODEL_NAME}_T{int(DEMO_PORTFOLIO_THRESHOLD * 100):03d}"
+def config_id(asset, direction, threshold=None):
+    threshold = DEMO_PORTFOLIO_THRESHOLD if threshold is None else threshold
+    return f"{CONFIG_PREFIX}_{asset}_{direction}_{MODEL_NAME}_T{int(round(threshold * 100)):03d}"
 
 
 def _sha256(path):
@@ -85,13 +100,14 @@ def load_local_prices(root, asset):
     return prices[["Open", "High", "Low", "Close", "Volume"]].apply(pd.to_numeric, errors="coerce").dropna()
 
 
-def _holdout_report(dataset, target):
+def _holdout_report(dataset, target, threshold=None):
+    threshold = DEMO_PORTFOLIO_THRESHOLD if threshold is None else threshold
     cut = int(len(dataset) * (1 - HOLDOUT_FRACTION))
     train = dataset.iloc[: max(0, cut - EMBARGO_BARS)]
     test = dataset.iloc[cut:]
     model = _crear_modelo(MODEL_NAME).fit(train[FEATURES_ML], train[target].astype(int))
     probs = model.predict_proba(test[FEATURES_ML])[:, list(model.classes_).index(1)]
-    hits = test[target][probs >= DEMO_PORTFOLIO_THRESHOLD].astype(int)
+    hits = test[target][probs >= threshold].astype(int)
     test_days = max(1, test["fecha"].dt.date.nunique())
     return {
         "holdout_start": test["fecha"].iloc[0].isoformat(),
@@ -101,16 +117,35 @@ def _holdout_report(dataset, target):
     }
 
 
-def train_portfolio_models(root, assets=None, data_source="yfinance"):
-    """Entrena LONG y SHORT por activo con todo el historico local y guarda metadata."""
+def _training_prices(root, asset, data_source):
+    if data_source == "mt5":
+        return load_mt5_prices(root, asset)[["Open", "High", "Low", "Close", "Volume"]]
+    return load_local_prices(root, asset)
+
+
+def train_portfolio_models(root, assets=None, data_source=None):
+    """Entrena LONG y SHORT por activo con todo el historico y guarda metadata.
+
+    Por defecto usa el historico del broker (data/mt5) si existe; si no, yfinance. Si existe
+    portfolio_selection.json, cada direccion se entrena con el stop que eligio el walk-forward.
+    """
     assets = assets or DEMO_PORTFOLIO_ASSETS
     model_dir(root).mkdir(parents=True, exist_ok=True)
+    selection = load_selection(root) or {}
     report = []
     for asset in assets:
-        dataset = crear_dataset_ml(calcular_indicadores(load_local_prices(root, asset)))
+        source = data_source or ("mt5" if mt5_data_path(root, asset).exists() else "yfinance")
+        dataset = crear_dataset_ml(calcular_indicadores(_training_prices(root, asset, source)))
         for direction, (target, _) in DIRECTIONS.items():
+            rule = selection.get(asset, {}).get(direction) or {}
+            if rule.get("strategy") not in (None, "ML"):
+                rule = {}  # direccion operada por reglas: el modelo ML queda con el target base
+            stop_atr, take_profit_atr, max_hold_bars = exit_params(rule.get("stop_atr") or STOP_ATR)
+            if stop_atr != STOP_ATR:
+                dataset[target] = target_for_stop(dataset, direction, stop_atr)
             data = dataset.dropna(subset=FEATURES_ML + [target]).reset_index(drop=True)
-            holdout = _holdout_report(data, target)
+            threshold = rule.get("threshold") or DEMO_PORTFOLIO_THRESHOLD
+            holdout = _holdout_report(data, target, threshold)
             model = _crear_modelo(MODEL_NAME).fit(data[FEATURES_ML], data[target].astype(int))
             path = model_path(root, asset, direction)
             joblib.dump(model, path)
@@ -119,13 +154,15 @@ def train_portfolio_models(root, assets=None, data_source="yfinance"):
                 "activo": asset,
                 "direccion": direction,
                 "modelo": MODEL_NAME,
-                "threshold": DEMO_PORTFOLIO_THRESHOLD,
+                "threshold": threshold,
                 "features": FEATURES_ML,
                 "timeframe": "H1",
-                "stop_atr": STOP_ATR,
-                "take_profit_atr": TAKE_PROFIT_ATR,
-                "max_hold_bars": MAX_HOLD_BARS,
-                "data_source": data_source,
+                "stop_atr": stop_atr,
+                "take_profit_atr": take_profit_atr,
+                "max_hold_bars": max_hold_bars,
+                "walkforward_enabled": bool(rule.get("enabled", False)),
+                "walkforward_reason": rule.get("reason"),
+                "data_source": source,
                 "train_start": data["fecha"].iloc[0].isoformat(),
                 "train_end": data["fecha"].iloc[-1].isoformat(),
                 "train_rows": int(len(data)),
@@ -210,6 +247,93 @@ def decide(prob_long, prob_short, threshold=None):
     return "LONG" if prob_long >= prob_short else "SHORT"
 
 
+def enabled_probabilities(asset, prob_long, prob_short):
+    """Anula la probabilidad de las direcciones desactivadas en config (no operan nunca)."""
+    disabled = DEMO_PORTFOLIO_DISABLED_DIRECTIONS.get(asset, ())
+    return (
+        0.0 if "LONG" in disabled else prob_long,
+        0.0 if "SHORT" in disabled else prob_short,
+    )
+
+
+def is_rule_strategy(rule):
+    return (rule or {}).get("strategy") not in (None, "ML")
+
+
+def portfolio_decision(asset, prob_long, prob_short, trend=0, selection=None, signals=None):
+    """LONG, SHORT o WAIT segun la seleccion walk-forward (portfolio_selection.json).
+
+    Cada direccion opera solo si esta habilitada y su estrategia da entrada: el modelo ML
+    supera su threshold, o la estrategia de reglas marca senal en la ultima vela cerrada
+    (`signals` = {direccion: bool}). Si la variante usa filtro de tendencia, la tendencia ~D1
+    debe ir a favor. Si ambas direcciones dan entrada a la vez no se opera.
+    Sin archivo de seleccion se usa la regla anterior (threshold global).
+    Devuelve (decision, threshold).
+    """
+    if selection is None:
+        return decide(*enabled_probabilities(asset, prob_long, prob_short)), DEMO_PORTFOLIO_THRESHOLD
+    rules = selection.get(asset, {})
+    signals = signals or {}
+    eligible = []
+    for direction, prob in (("LONG", prob_long), ("SHORT", prob_short)):
+        rule = rules.get(direction) or {}
+        if not rule.get("enabled"):
+            continue
+        if is_rule_strategy(rule):
+            if not signals.get(direction):
+                continue
+            threshold = 0.0
+        else:
+            threshold = rule["threshold"]
+            if prob < threshold:
+                continue
+        if rule.get("trend_filter") and not trend_allows(direction, trend):
+            continue
+        eligible.append((direction, threshold))
+    if len(eligible) != 1:
+        return "WAIT", DEMO_PORTFOLIO_THRESHOLD
+    return eligible[0]
+
+
+def live_rule_signals(asset, features, selection):
+    """{direccion: bool} de las estrategias de reglas habilitadas, en la ultima vela cerrada."""
+    out = {}
+    for direction, rule in ((selection or {}).get(asset) or {}).items():
+        if rule and rule.get("enabled") and is_rule_strategy(rule):
+            out[direction] = bool(rule_signals(features, rule["strategy"], direction)[-1])
+    return out
+
+
+def exit_rule(asset, direction, selection):
+    """(stop_atr, take_profit_atr, max_hold_bars) de la direccion segun la seleccion."""
+    rule = ((selection or {}).get(asset) or {}).get(direction) or {}
+    if not rule.get("stop_atr"):
+        return exit_params(STOP_ATR)
+    default = exit_params(rule["stop_atr"])
+    return (float(rule["stop_atr"]), float(rule.get("take_profit_atr") or default[1]),
+            int(rule.get("max_hold_bars") or default[2]))
+
+
+def max_hold_for_asset(asset, selection):
+    """Cierre por tiempo: el mayor tiempo maximo de las direcciones habilitadas del activo."""
+    rules = (selection or {}).get(asset) or {}
+    holds = [exit_rule(asset, d, selection)[2] for d, r in rules.items() if r and r.get("enabled")]
+    return max(holds, default=MAX_HOLD_BARS)
+
+
+def open_position_legs(mt5, resolved):
+    """(activo, BUY/SELL) de las posiciones abiertas del bot, para el limite por moneda."""
+    from src.live_executor import bot_positions
+
+    by_symbol = {r.mt5_symbol.upper(): asset for asset, r in resolved.items() if r.found}
+    legs = []
+    for position in bot_positions(mt5):
+        symbol = str(getattr(position, "symbol", "") or "").upper()
+        side = BUY if int(getattr(position, "type", 0)) == 0 else SELL
+        legs.append((by_symbol.get(symbol, symbol), side))
+    return legs
+
+
 def infer_server_offset(mt5, symbols, now):
     """Desfase servidor-UTC (horas) usando el tick mas reciente de todos los simbolos.
 
@@ -249,7 +373,16 @@ def closed_h1_features(mt5, symbol, now, server_offset):
     if prices.empty or prices.index.max() != last_closed:
         return None
     features = crear_dataset_ml(calcular_indicadores(prices))
-    return features if not features.empty and features["fecha"].iloc[-1] == last_closed else None
+    if features.empty or features["fecha"].iloc[-1] != last_closed:
+        return None
+    return add_strategy_columns(add_trend_columns(features, prices["Close"]))
+
+
+def forward_symbols(mt5):
+    """Simbolos con posicion abierta del dispatcher de forwards (mt5_demo_auto)."""
+    from src.mt5_demo_auto import _demo_positions
+
+    return {str(getattr(p, "symbol", "") or "").upper() for p in _demo_positions(mt5)}
 
 
 def _append_signal(root, row):
@@ -272,8 +405,9 @@ def _append_shadow_signal(root, row):
     pd.DataFrame([row], columns=SHADOW_COLUMNS).to_csv(path, mode="a", header=not path.exists(), index=False)
 
 
-def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, models=None):
+def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, models=None, selection="auto"):
     dry_run = (not DEMO_EXECUTION_ENABLED) if dry_run is None else dry_run
+    selection = load_selection(root) if selection == "auto" else selection
     now = pd.to_datetime(now or pd.Timestamp.now(tz="UTC"), utc=True)
     models = models or load_portfolio_models(root)
     risk_manager = RiskManager(RiskLimits(maximum_simultaneous_positions=DEMO_PORTFOLIO_MAX_POSITIONS))
@@ -296,7 +430,8 @@ def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, mo
                 item["decision"] = "SYMBOL_NOT_FOUND"
                 continue
             item["closed"] = close_expired_positions(
-                mt5, root, symbols={symbol}, max_hold_bars=MAX_HOLD_BARS, dry_run=dry_run, notify=notify,
+                mt5, root, symbols={symbol}, max_hold_bars=max_hold_for_asset(asset, selection),
+                dry_run=dry_run, notify=notify,
             )
 
             features = closed_h1_features(mt5, symbol, now, server_offset)
@@ -305,9 +440,11 @@ def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, mo
             row = features.iloc[-1]
             prob_long = _probability(models[(asset, "LONG")], row)
             prob_short = _probability(models[(asset, "SHORT")], row)
-            decision = decide(prob_long, prob_short)
+            trend = int(row["TREND"]) if "TREND" in row and pd.notna(row["TREND"]) else 0
+            signals = live_rule_signals(asset, features, selection)
+            decision, threshold = portfolio_decision(asset, prob_long, prob_short, trend, selection, signals)
             fecha = pd.to_datetime(row["fecha"]).isoformat()
-            signal_id = f"{config_id(asset, decision)}|{fecha}" if decision != "WAIT" else ""
+            signal_id = f"{config_id(asset, decision, threshold)}|{fecha}" if decision != "WAIT" else ""
             item.update({"decision": decision, "prob_long": prob_long, "prob_short": prob_short, "fecha": fecha})
             _append_signal(root, {
                 "FECHA_SIGNAL": fecha, "ASSET": asset, "SYMBOL": symbol, "PROB_LONG": prob_long,
@@ -316,15 +453,37 @@ def run_portfolio_live(root, dry_run=None, mt5_factory=mt5_session, now=None, mo
             })
             if decision == "WAIT":
                 continue
+            if symbol.upper() in forward_symbols(mt5):
+                # Los forwards congelados (EURUSD T065 / GOLD T060-T055) tienen prioridad:
+                # nunca dos estrategias con posicion en el mismo simbolo.
+                item["decision"] = f"{decision} (cede al forward)"
+                _append_shadow_signal(root, {
+                    "FECHA_SIGNAL": fecha, "ASSET": asset, "SYMBOL": symbol, "DECISION": decision,
+                    "SIGNAL_ID": signal_id, "SKIP_REASON": "FORWARD_POSITION_OPEN",
+                    "PROB_LONG": prob_long, "PROB_SHORT": prob_short,
+                })
+                continue
+            if not currency_exposure_allowed(
+                open_position_legs(mt5, resolved), asset, decision, MAX_POSITIONS_PER_CURRENCY,
+            ):
+                # Varias posiciones que en realidad son la misma apuesta (ej. 3 cruces JPY).
+                item["decision"] = f"{decision} (limite por moneda)"
+                _append_shadow_signal(root, {
+                    "FECHA_SIGNAL": fecha, "ASSET": asset, "SYMBOL": symbol, "DECISION": decision,
+                    "SIGNAL_ID": signal_id, "SKIP_REASON": "CURRENCY_EXPOSURE_LIMIT",
+                    "PROB_LONG": prob_long, "PROB_SHORT": prob_short,
+                })
+                continue
 
+            stop_atr, take_profit_atr, _ = exit_rule(asset, decision, selection)
             intent = OrderIntent(
                 signal_id=signal_id,
-                config_id=config_id(asset, decision),
+                config_id=config_id(asset, decision, threshold),
                 asset=asset,
                 direction=DIRECTIONS[decision][1],
                 atr=float(row["ATR"]),
-                stop_atr=STOP_ATR,
-                take_profit_atr=TAKE_PROFIT_ATR,
+                stop_atr=stop_atr,
+                take_profit_atr=take_profit_atr,
             )
             item["execution"] = execute_signal(
                 mt5, intent, root, dry_run=dry_run, risk_manager=risk_manager, notify=notify,

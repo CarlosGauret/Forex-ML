@@ -19,7 +19,11 @@ def testing_mode_enabled():
         return True
     if value in {"0", "false", "no", "off"}:
         return False
-    return "unittest" in sys.modules or "pytest" in sys.modules
+    # No usar "unittest" in sys.modules: numpy.testing lo importa en produccion
+    # y eso bloqueaba todos los mensajes reales. tests/__init__.py fija la variable.
+    main_spec = getattr(sys.modules.get("__main__"), "__spec__", None)
+    main_name = getattr(main_spec, "name", "") or ""
+    return "pytest" in sys.modules or main_name.startswith("unittest")
 
 
 def enviar_telegram(mensaje):

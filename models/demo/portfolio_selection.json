@@ -1,0 +1,2117 @@
+{
+  "generated_at": "2026-10-05T00:09:52.268060+00:00",
+  "method": "walk-forward anual MT5, seleccion <2024, confirmacion >=2024, costos spread x1.5, ML stops [1.0, 2.0, 3.0] ATR + reglas ['MEANREV_RSI2', 'PULLBACK_TREND', 'BREAKOUT_5D', 'BREAKOUT_LONDON']",
+  "assets": {
+    "EURUSD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 26,
+            "win_rate": 0.4231,
+            "expectancy_r": 0.2692,
+            "profit_factor": 1.467,
+            "total_r": 7.0,
+            "max_dd_r": 5.0,
+            "positive_years": 1.0,
+            "timeouts": 0
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 34,
+            "win_rate": 0.2647,
+            "expectancy_r": -0.219,
+            "profit_factor": 0.702,
+            "total_r": -7.45,
+            "max_dd_r": 13.0,
+            "positive_years": 0.333,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "GBPUSD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 157,
+            "win_rate": 0.3121,
+            "expectancy_r": -0.122,
+            "profit_factor": 0.821,
+            "total_r": -19.15,
+            "max_dd_r": 21.15,
+            "positive_years": 0.167,
+            "timeouts": 8
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 161,
+            "win_rate": 0.2981,
+            "expectancy_r": -0.131,
+            "profit_factor": 0.811,
+            "total_r": -21.09,
+            "max_dd_r": 32.52,
+            "positive_years": 0.333,
+            "timeouts": 8
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "USDJPY": {
+      "LONG": {
+        "enabled": true,
+        "reason": "OK",
+        "strategy": "ML",
+        "threshold": 0.6,
+        "trend_filter": true,
+        "stop_atr": 3.0,
+        "take_profit_atr": 6.0,
+        "max_hold_bars": 72,
+        "best": {
+          "variant": "ML_SL3_T060_TREND",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": true,
+          "stop_atr": 3.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 75,
+            "win_rate": 0.4667,
+            "expectancy_r": 0.3181,
+            "profit_factor": 1.598,
+            "total_r": 23.86,
+            "max_dd_r": 6.0,
+            "positive_years": 0.75,
+            "timeouts": 6
+          },
+          "confirmation": {
+            "trades": 20,
+            "win_rate": 0.4,
+            "expectancy_r": 0.2019,
+            "profit_factor": 1.36,
+            "total_r": 4.04,
+            "max_dd_r": 4.0,
+            "positive_years": 0.5,
+            "timeouts": 2
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 40,
+            "win_rate": 0.3,
+            "expectancy_r": -0.1,
+            "profit_factor": 0.857,
+            "total_r": -4.0,
+            "max_dd_r": 10.0,
+            "positive_years": 0.333,
+            "timeouts": 0
+          },
+          "confirmation": {
+            "trades": 2,
+            "win_rate": 0.5,
+            "expectancy_r": 0.5,
+            "profit_factor": 2.0,
+            "total_r": 1.0,
+            "max_dd_r": 1.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 51,
+            "win_rate": 0.4314,
+            "expectancy_r": 0.1487,
+            "profit_factor": 1.262,
+            "total_r": 7.59,
+            "max_dd_r": 8.0,
+            "positive_years": 0.5,
+            "timeouts": 5
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 0.0,
+            "expectancy_r": -1.0,
+            "profit_factor": 0.0,
+            "total_r": -1.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "AUDUSD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 15,
+            "win_rate": 0.4,
+            "expectancy_r": 0.2,
+            "profit_factor": 1.333,
+            "total_r": 3.0,
+            "max_dd_r": 5.0,
+            "positive_years": 0.5,
+            "timeouts": 0
+          },
+          "confirmation": {
+            "trades": 3,
+            "win_rate": 0.3333,
+            "expectancy_r": -0.0,
+            "profit_factor": 1.0,
+            "total_r": -0.0,
+            "max_dd_r": 1.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.55,
+        "trend_filter": true,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": {
+          "variant": "ML_SL1_T055_TREND",
+          "strategy": "ML",
+          "threshold": 0.55,
+          "trend_filter": true,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 199,
+            "win_rate": 0.3819,
+            "expectancy_r": 0.117,
+            "profit_factor": 1.189,
+            "total_r": 23.28,
+            "max_dd_r": 20.18,
+            "positive_years": 0.8,
+            "timeouts": 4
+          },
+          "confirmation": {
+            "trades": 3,
+            "win_rate": 0.3333,
+            "expectancy_r": 0.0,
+            "profit_factor": 1.0,
+            "total_r": 0.0,
+            "max_dd_r": 1.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 31,
+            "win_rate": 0.4516,
+            "expectancy_r": 0.3201,
+            "profit_factor": 1.601,
+            "total_r": 9.92,
+            "max_dd_r": 6.51,
+            "positive_years": 0.5,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "USDCAD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.6,
+        "trend_filter": true,
+        "stop_atr": 3.0,
+        "take_profit_atr": 6.0,
+        "max_hold_bars": 72,
+        "best": {
+          "variant": "ML_SL3_T060_TREND",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": true,
+          "stop_atr": 3.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 65,
+            "win_rate": 0.4923,
+            "expectancy_r": 0.2222,
+            "profit_factor": 1.455,
+            "total_r": 14.44,
+            "max_dd_r": 6.0,
+            "positive_years": 0.8,
+            "timeouts": 17
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 54,
+            "win_rate": 0.3333,
+            "expectancy_r": -0.0867,
+            "profit_factor": 0.87,
+            "total_r": -4.68,
+            "max_dd_r": 14.11,
+            "positive_years": 0.4,
+            "timeouts": 4
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 40,
+            "win_rate": 0.35,
+            "expectancy_r": 0.0051,
+            "profit_factor": 1.008,
+            "total_r": 0.2,
+            "max_dd_r": 6.8,
+            "positive_years": 0.5,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 3,
+            "win_rate": 0.3333,
+            "expectancy_r": -0.0,
+            "profit_factor": 1.0,
+            "total_r": -0.0,
+            "max_dd_r": 1.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "USDCHF": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 11,
+            "win_rate": 0.3636,
+            "expectancy_r": 0.046,
+            "profit_factor": 1.072,
+            "total_r": 0.51,
+            "max_dd_r": 3.0,
+            "positive_years": 0.5,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 21,
+            "win_rate": 0.3333,
+            "expectancy_r": -0.1424,
+            "profit_factor": 0.786,
+            "total_r": -2.99,
+            "max_dd_r": 5.99,
+            "positive_years": 0.5,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 5,
+            "win_rate": 0.2,
+            "expectancy_r": -0.4,
+            "profit_factor": 0.5,
+            "total_r": -2.0,
+            "max_dd_r": 2.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "NZDUSD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 11,
+            "win_rate": 0.4545,
+            "expectancy_r": 0.216,
+            "profit_factor": 1.396,
+            "total_r": 2.38,
+            "max_dd_r": 2.0,
+            "positive_years": 1.0,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 3,
+            "win_rate": 0.3333,
+            "expectancy_r": -0.0,
+            "profit_factor": 1.0,
+            "total_r": -0.0,
+            "max_dd_r": 1.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 43,
+            "win_rate": 0.3256,
+            "expectancy_r": -0.0233,
+            "profit_factor": 0.966,
+            "total_r": -1.0,
+            "max_dd_r": 9.0,
+            "positive_years": 0.75,
+            "timeouts": 0
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "GOLD": {
+      "LONG": {
+        "enabled": true,
+        "reason": "OK",
+        "strategy": "ML",
+        "threshold": 0.55,
+        "trend_filter": false,
+        "stop_atr": 2.0,
+        "take_profit_atr": 4.0,
+        "max_hold_bars": 48,
+        "best": {
+          "variant": "ML_SL2_T055",
+          "strategy": "ML",
+          "threshold": 0.55,
+          "trend_filter": false,
+          "stop_atr": 2.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 369,
+            "win_rate": 0.4201,
+            "expectancy_r": 0.1641,
+            "profit_factor": 1.291,
+            "total_r": 60.55,
+            "max_dd_r": 15.91,
+            "positive_years": 0.643,
+            "timeouts": 42
+          },
+          "confirmation": {
+            "trades": 128,
+            "win_rate": 0.4375,
+            "expectancy_r": 0.2479,
+            "profit_factor": 1.458,
+            "total_r": 31.73,
+            "max_dd_r": 7.0,
+            "positive_years": 1.0,
+            "timeouts": 12
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 283,
+            "win_rate": 0.3039,
+            "expectancy_r": -0.0911,
+            "profit_factor": 0.868,
+            "total_r": -25.78,
+            "max_dd_r": 65.89,
+            "positive_years": 0.556,
+            "timeouts": 4
+          },
+          "confirmation": {
+            "trades": 8,
+            "win_rate": 0.25,
+            "expectancy_r": -0.25,
+            "profit_factor": 0.667,
+            "total_r": -2.0,
+            "max_dd_r": 4.0,
+            "positive_years": 0.0,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 967,
+            "win_rate": 0.3361,
+            "expectancy_r": -0.0203,
+            "profit_factor": 0.969,
+            "total_r": -19.6,
+            "max_dd_r": 48.59,
+            "positive_years": 0.222,
+            "timeouts": 26
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "EURJPY": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.6,
+        "trend_filter": true,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": {
+          "variant": "ML_SL1_T060_TREND",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": true,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 87,
+            "win_rate": 0.3793,
+            "expectancy_r": 0.1196,
+            "profit_factor": 1.193,
+            "total_r": 10.4,
+            "max_dd_r": 10.0,
+            "positive_years": 1.0,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 1.0,
+            "expectancy_r": 1.1399,
+            "profit_factor": null,
+            "total_r": 1.14,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 1
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 151,
+            "win_rate": 0.3444,
+            "expectancy_r": 0.0203,
+            "profit_factor": 1.031,
+            "total_r": 3.06,
+            "max_dd_r": 16.0,
+            "positive_years": 0.6,
+            "timeouts": 4
+          },
+          "confirmation": {
+            "trades": 7,
+            "win_rate": 0.5714,
+            "expectancy_r": 0.4596,
+            "profit_factor": 2.072,
+            "total_r": 3.22,
+            "max_dd_r": 3.0,
+            "positive_years": 1.0,
+            "timeouts": 2
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.6,
+        "trend_filter": true,
+        "stop_atr": 3.0,
+        "take_profit_atr": 6.0,
+        "max_hold_bars": 72,
+        "best": {
+          "variant": "ML_SL3_T060_TREND",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": true,
+          "stop_atr": 3.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 134,
+            "win_rate": 0.3806,
+            "expectancy_r": 0.1102,
+            "profit_factor": 1.185,
+            "total_r": 14.77,
+            "max_dd_r": 10.52,
+            "positive_years": 0.625,
+            "timeouts": 11
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 0.0,
+            "expectancy_r": -1.0,
+            "profit_factor": 0.0,
+            "total_r": -1.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 117,
+            "win_rate": 0.3248,
+            "expectancy_r": -0.0427,
+            "profit_factor": 0.937,
+            "total_r": -5.0,
+            "max_dd_r": 17.0,
+            "positive_years": 0.25,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "GBPJPY": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.6,
+        "trend_filter": false,
+        "stop_atr": 3.0,
+        "take_profit_atr": 6.0,
+        "max_hold_bars": 72,
+        "best": {
+          "variant": "ML_SL3_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 3.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 169,
+            "win_rate": 0.4615,
+            "expectancy_r": 0.2166,
+            "profit_factor": 1.439,
+            "total_r": 36.6,
+            "max_dd_r": 6.94,
+            "positive_years": 0.8,
+            "timeouts": 39
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 149,
+            "win_rate": 0.3356,
+            "expectancy_r": -0.0352,
+            "profit_factor": 0.947,
+            "total_r": -5.25,
+            "max_dd_r": 17.31,
+            "positive_years": 0.4,
+            "timeouts": 6
+          },
+          "confirmation": {
+            "trades": 8,
+            "win_rate": 0.5,
+            "expectancy_r": 0.5314,
+            "profit_factor": 2.281,
+            "total_r": 4.25,
+            "max_dd_r": 2.32,
+            "positive_years": 1.0,
+            "timeouts": 2
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 42,
+            "win_rate": 0.4524,
+            "expectancy_r": 0.2983,
+            "profit_factor": 1.545,
+            "total_r": 12.53,
+            "max_dd_r": 6.0,
+            "positive_years": 1.0,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "AUDJPY": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 44,
+            "win_rate": 0.4773,
+            "expectancy_r": 0.4515,
+            "profit_factor": 1.898,
+            "total_r": 19.87,
+            "max_dd_r": 8.0,
+            "positive_years": 0.6,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 10,
+            "win_rate": 0.5,
+            "expectancy_r": 0.5528,
+            "profit_factor": 2.236,
+            "total_r": 5.53,
+            "max_dd_r": 2.0,
+            "positive_years": 1.0,
+            "timeouts": 1
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 42,
+            "win_rate": 0.2381,
+            "expectancy_r": -0.2633,
+            "profit_factor": 0.644,
+            "total_r": -11.06,
+            "max_dd_r": 16.06,
+            "positive_years": 0.5,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 2,
+            "win_rate": 0.5,
+            "expectancy_r": 0.5,
+            "profit_factor": 2.0,
+            "total_r": 1.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "CADJPY": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 37,
+            "win_rate": 0.3514,
+            "expectancy_r": -0.0026,
+            "profit_factor": 0.996,
+            "total_r": -0.1,
+            "max_dd_r": 11.0,
+            "positive_years": 0.333,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 2,
+            "win_rate": 0.5,
+            "expectancy_r": -0.0383,
+            "profit_factor": 0.923,
+            "total_r": -0.08,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 1
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 60,
+            "win_rate": 0.25,
+            "expectancy_r": -0.318,
+            "profit_factor": 0.565,
+            "total_r": -19.08,
+            "max_dd_r": 23.08,
+            "positive_years": 0.333,
+            "timeouts": 6
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "EURAUD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.6,
+        "trend_filter": true,
+        "stop_atr": 2.0,
+        "take_profit_atr": 4.0,
+        "max_hold_bars": 48,
+        "best": {
+          "variant": "ML_SL2_T060_TREND",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": true,
+          "stop_atr": 2.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 110,
+            "win_rate": 0.4273,
+            "expectancy_r": 0.2435,
+            "profit_factor": 1.425,
+            "total_r": 26.79,
+            "max_dd_r": 8.56,
+            "positive_years": 0.714,
+            "timeouts": 3
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 200,
+            "win_rate": 0.28,
+            "expectancy_r": -0.1732,
+            "profit_factor": 0.759,
+            "total_r": -34.65,
+            "max_dd_r": 34.65,
+            "positive_years": 0.0,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 0.0,
+            "expectancy_r": -1.0,
+            "profit_factor": 0.0,
+            "total_r": -1.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": true,
+        "reason": "OK",
+        "strategy": "BREAKOUT_LONDON",
+        "threshold": 0.0,
+        "trend_filter": true,
+        "stop_atr": 3.0,
+        "take_profit_atr": 6.0,
+        "max_hold_bars": 72,
+        "best": {
+          "variant": "BREAKOUT_LONDON_SL3_TP2_TREND",
+          "strategy": "BREAKOUT_LONDON",
+          "threshold": 0.0,
+          "trend_filter": true,
+          "stop_atr": 3.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 283,
+            "win_rate": 0.4134,
+            "expectancy_r": 0.1001,
+            "profit_factor": 1.18,
+            "total_r": 28.34,
+            "max_dd_r": 14.13,
+            "positive_years": 0.727,
+            "timeouts": 55
+          },
+          "confirmation": {
+            "trades": 75,
+            "win_rate": 0.4,
+            "expectancy_r": 0.0512,
+            "profit_factor": 1.09,
+            "total_r": 3.84,
+            "max_dd_r": 7.41,
+            "positive_years": 0.333,
+            "timeouts": 15
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 181,
+            "win_rate": 0.3094,
+            "expectancy_r": -0.078,
+            "profit_factor": 0.887,
+            "total_r": -14.12,
+            "max_dd_r": 26.6,
+            "positive_years": 0.143,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 3,
+            "win_rate": 0.3333,
+            "expectancy_r": 0.0,
+            "profit_factor": 1.0,
+            "total_r": 0.0,
+            "max_dd_r": 1.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "EURCAD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.6,
+        "trend_filter": false,
+        "stop_atr": 2.0,
+        "take_profit_atr": 4.0,
+        "max_hold_bars": 48,
+        "best": {
+          "variant": "ML_SL2_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 2.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 100,
+            "win_rate": 0.43,
+            "expectancy_r": 0.1364,
+            "profit_factor": 1.246,
+            "total_r": 13.64,
+            "max_dd_r": 11.14,
+            "positive_years": 0.75,
+            "timeouts": 16
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 82,
+            "win_rate": 0.2073,
+            "expectancy_r": -0.4186,
+            "profit_factor": 0.472,
+            "total_r": -34.33,
+            "max_dd_r": 33.33,
+            "positive_years": 0.0,
+            "timeouts": 2
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 1.0,
+            "expectancy_r": 2.0,
+            "profit_factor": null,
+            "total_r": 2.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 240,
+            "win_rate": 0.2917,
+            "expectancy_r": -0.177,
+            "profit_factor": 0.748,
+            "total_r": -42.49,
+            "max_dd_r": 43.38,
+            "positive_years": 0.167,
+            "timeouts": 11
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 0.0,
+            "expectancy_r": -1.0,
+            "profit_factor": 0.0,
+            "total_r": -1.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "AUDNZD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.65,
+        "trend_filter": false,
+        "stop_atr": 3.0,
+        "take_profit_atr": 6.0,
+        "max_hold_bars": 72,
+        "best": {
+          "variant": "ML_SL3_T065",
+          "strategy": "ML",
+          "threshold": 0.65,
+          "trend_filter": false,
+          "stop_atr": 3.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 72,
+            "win_rate": 0.4722,
+            "expectancy_r": 0.0801,
+            "profit_factor": 1.187,
+            "total_r": 5.77,
+            "max_dd_r": 8.4,
+            "positive_years": 0.75,
+            "timeouts": 34
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 280,
+            "win_rate": 0.2357,
+            "expectancy_r": -0.3362,
+            "profit_factor": 0.555,
+            "total_r": -94.15,
+            "max_dd_r": 101.53,
+            "positive_years": 0.273,
+            "timeouts": 17
+          },
+          "confirmation": {
+            "trades": 50,
+            "win_rate": 0.16,
+            "expectancy_r": -0.52,
+            "profit_factor": 0.381,
+            "total_r": -26.0,
+            "max_dd_r": 28.0,
+            "positive_years": 0.0,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 503,
+            "win_rate": 0.2883,
+            "expectancy_r": -0.1559,
+            "profit_factor": 0.778,
+            "total_r": -78.4,
+            "max_dd_r": 79.56,
+            "positive_years": 0.0,
+            "timeouts": 23
+          },
+          "confirmation": {
+            "trades": 16,
+            "win_rate": 0.1875,
+            "expectancy_r": -0.4375,
+            "profit_factor": 0.462,
+            "total_r": -7.0,
+            "max_dd_r": 9.0,
+            "positive_years": 0.5,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "AUDCAD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 97,
+            "win_rate": 0.3299,
+            "expectancy_r": -0.0059,
+            "profit_factor": 0.991,
+            "total_r": -0.57,
+            "max_dd_r": 15.57,
+            "positive_years": 0.571,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 25,
+            "win_rate": 0.28,
+            "expectancy_r": -0.16,
+            "profit_factor": 0.778,
+            "total_r": -4.0,
+            "max_dd_r": 9.0,
+            "positive_years": 0.5,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 107,
+            "win_rate": 0.3738,
+            "expectancy_r": 0.0466,
+            "profit_factor": 1.075,
+            "total_r": 4.99,
+            "max_dd_r": 16.45,
+            "positive_years": 0.286,
+            "timeouts": 6
+          },
+          "confirmation": {
+            "trades": 4,
+            "win_rate": 0.0,
+            "expectancy_r": -1.0,
+            "profit_factor": 0.0,
+            "total_r": -4.0,
+            "max_dd_r": 3.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "GBPAUD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "BREAKOUT_LONDON",
+        "threshold": 0.0,
+        "trend_filter": true,
+        "stop_atr": 3.0,
+        "take_profit_atr": 6.0,
+        "max_hold_bars": 72,
+        "best": {
+          "variant": "BREAKOUT_LONDON_SL3_TP2_TREND",
+          "strategy": "BREAKOUT_LONDON",
+          "threshold": 0.0,
+          "trend_filter": true,
+          "stop_atr": 3.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 346,
+            "win_rate": 0.4393,
+            "expectancy_r": 0.1273,
+            "profit_factor": 1.238,
+            "total_r": 44.05,
+            "max_dd_r": 12.02,
+            "positive_years": 0.727,
+            "timeouts": 70
+          },
+          "confirmation": {
+            "trades": 76,
+            "win_rate": 0.2895,
+            "expectancy_r": -0.1806,
+            "profit_factor": 0.723,
+            "total_r": -13.73,
+            "max_dd_r": 19.26,
+            "positive_years": 0.0,
+            "timeouts": 13
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 46,
+            "win_rate": 0.2391,
+            "expectancy_r": -0.2635,
+            "profit_factor": 0.645,
+            "total_r": -12.12,
+            "max_dd_r": 16.12,
+            "positive_years": 0.4,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 2,
+            "win_rate": 0.5,
+            "expectancy_r": -0.4306,
+            "profit_factor": 0.139,
+            "total_r": -0.86,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 1
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 151,
+            "win_rate": 0.3311,
+            "expectancy_r": -0.0633,
+            "profit_factor": 0.905,
+            "total_r": -9.55,
+            "max_dd_r": 27.0,
+            "positive_years": 0.429,
+            "timeouts": 7
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 1.0,
+            "expectancy_r": 2.0,
+            "profit_factor": null,
+            "total_r": 2.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "SILVER": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 263,
+            "win_rate": 0.3004,
+            "expectancy_r": -0.1428,
+            "profit_factor": 0.796,
+            "total_r": -37.57,
+            "max_dd_r": 61.16,
+            "positive_years": 0.444,
+            "timeouts": 9
+          },
+          "confirmation": {
+            "trades": 14,
+            "win_rate": 0.3571,
+            "expectancy_r": 0.0714,
+            "profit_factor": 1.111,
+            "total_r": 1.0,
+            "max_dd_r": 8.0,
+            "positive_years": 1.0,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_CONFIRMACION_2024_2026",
+        "strategy": "ML",
+        "threshold": 0.65,
+        "trend_filter": true,
+        "stop_atr": 2.0,
+        "take_profit_atr": 4.0,
+        "max_hold_bars": 48,
+        "best": {
+          "variant": "ML_SL2_T065_TREND",
+          "strategy": "ML",
+          "threshold": 0.65,
+          "trend_filter": true,
+          "stop_atr": 2.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 130,
+            "win_rate": 0.4077,
+            "expectancy_r": 0.1054,
+            "profit_factor": 1.188,
+            "total_r": 13.7,
+            "max_dd_r": 11.75,
+            "positive_years": 1.0,
+            "timeouts": 23
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        },
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 614,
+            "win_rate": 0.3502,
+            "expectancy_r": 0.0347,
+            "profit_factor": 1.054,
+            "total_r": 21.29,
+            "max_dd_r": 29.59,
+            "positive_years": 0.571,
+            "timeouts": 18
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "BTCUSD": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 620,
+            "win_rate": 0.1532,
+            "expectancy_r": -0.5475,
+            "profit_factor": 0.353,
+            "total_r": -339.42,
+            "max_dd_r": 379.46,
+            "positive_years": 0.125,
+            "timeouts": 3
+          },
+          "confirmation": {
+            "trades": 22,
+            "win_rate": 0.3182,
+            "expectancy_r": -0.0455,
+            "profit_factor": 0.933,
+            "total_r": -1.0,
+            "max_dd_r": 3.0,
+            "positive_years": 0.5,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 643,
+            "win_rate": 0.1166,
+            "expectancy_r": -0.6525,
+            "profit_factor": 0.259,
+            "total_r": -419.55,
+            "max_dd_r": 425.55,
+            "positive_years": 0.125,
+            "timeouts": 6
+          },
+          "confirmation": {
+            "trades": 5,
+            "win_rate": 0.6,
+            "expectancy_r": 0.6328,
+            "profit_factor": 2.582,
+            "total_r": 3.16,
+            "max_dd_r": 2.0,
+            "positive_years": 1.0,
+            "timeouts": 1
+          }
+        }
+      }
+    },
+    "EURGBP": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 4,
+            "win_rate": 0.25,
+            "expectancy_r": -0.25,
+            "profit_factor": 0.667,
+            "total_r": -1.0,
+            "max_dd_r": 2.0,
+            "positive_years": null,
+            "timeouts": 0
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 309,
+            "win_rate": 0.356,
+            "expectancy_r": 0.0428,
+            "profit_factor": 1.066,
+            "total_r": 13.23,
+            "max_dd_r": 31.83,
+            "positive_years": 0.571,
+            "timeouts": 6
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "EURCHF": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 372,
+            "win_rate": 0.2984,
+            "expectancy_r": -0.1204,
+            "profit_factor": 0.826,
+            "total_r": -44.8,
+            "max_dd_r": 75.56,
+            "positive_years": 0.3,
+            "timeouts": 13
+          },
+          "confirmation": {
+            "trades": 88,
+            "win_rate": 0.2159,
+            "expectancy_r": -0.3679,
+            "profit_factor": 0.529,
+            "total_r": -32.38,
+            "max_dd_r": 38.38,
+            "positive_years": 0.0,
+            "timeouts": 2
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 928,
+            "win_rate": 0.2349,
+            "expectancy_r": -0.2998,
+            "profit_factor": 0.607,
+            "total_r": -278.25,
+            "max_dd_r": 277.25,
+            "positive_years": 0.091,
+            "timeouts": 9
+          },
+          "confirmation": {
+            "trades": 55,
+            "win_rate": 0.2,
+            "expectancy_r": -0.4,
+            "profit_factor": 0.5,
+            "total_r": -22.0,
+            "max_dd_r": 25.0,
+            "positive_years": 0.333,
+            "timeouts": 0
+          }
+        }
+      }
+    },
+    "GBPCHF": {
+      "LONG": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 97,
+            "win_rate": 0.3608,
+            "expectancy_r": 0.013,
+            "profit_factor": 1.021,
+            "total_r": 1.26,
+            "max_dd_r": 14.0,
+            "positive_years": 0.5,
+            "timeouts": 7
+          },
+          "confirmation": {
+            "trades": 1,
+            "win_rate": 0.0,
+            "expectancy_r": -1.0,
+            "profit_factor": 0.0,
+            "total_r": -1.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      },
+      "SHORT": {
+        "enabled": false,
+        "reason": "FALLA_SELECCION_2016_2023",
+        "strategy": null,
+        "threshold": null,
+        "trend_filter": null,
+        "stop_atr": 1.0,
+        "take_profit_atr": 2.0,
+        "max_hold_bars": 24,
+        "best": null,
+        "baseline_T060": {
+          "variant": "ML_SL1_T060",
+          "strategy": "ML",
+          "threshold": 0.6,
+          "trend_filter": false,
+          "stop_atr": 1.0,
+          "tp_ratio": 2.0,
+          "selection": {
+            "trades": 15,
+            "win_rate": 0.4,
+            "expectancy_r": 0.0727,
+            "profit_factor": 1.121,
+            "total_r": 1.09,
+            "max_dd_r": 3.0,
+            "positive_years": 1.0,
+            "timeouts": 1
+          },
+          "confirmation": {
+            "trades": 0,
+            "win_rate": null,
+            "expectancy_r": null,
+            "profit_factor": null,
+            "total_r": 0.0,
+            "max_dd_r": 0.0,
+            "positive_years": null,
+            "timeouts": 0
+          }
+        }
+      }
+    }
+  }
+}

@@ -179,9 +179,21 @@ class DecideTests(unittest.TestCase):
 
 class PortfolioModelsTests(unittest.TestCase):
     def test_all_trained_models_load_with_valid_hash(self):
+        from config import DEMO_PORTFOLIO_ASSETS
+
         models = load_portfolio_models(ROOT)
 
-        self.assertEqual(len(models), 16)
+        self.assertEqual(len(DEMO_PORTFOLIO_ASSETS), 19)
+        self.assertEqual(len(models), 2 * len(DEMO_PORTFOLIO_ASSETS))
+
+    def test_disabled_direction_never_trades(self):
+        from src.demo_portfolio import enabled_probabilities
+
+        # GBPJPY LONG desactivado: aunque el modelo de compra este muy seguro, no compra.
+        self.assertEqual(decide(*enabled_probabilities("GBPJPY", 0.95, 0.20)), "WAIT")
+        self.assertEqual(decide(*enabled_probabilities("GBPJPY", 0.95, 0.70)), "SHORT")
+        # Los 8 activos originales no tienen direcciones desactivadas.
+        self.assertEqual(decide(*enabled_probabilities("USDJPY", 0.70, 0.20)), "LONG")
 
     def test_tampered_model_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -278,6 +290,24 @@ class PortfolioRunTests(unittest.TestCase):
 
         self.assertEqual({item["execution"].reason for item in result["results"]}, {"MAXIMUM_POSITIONS_REACHED"})
         self.assertEqual(mt5.sent, [])
+
+    def test_portfolio_yields_symbol_to_open_forward_position(self):
+        from src.mt5_demo_auto import COMMENT_BY_ASSET, MAGIC_BY_ASSET
+
+        mt5 = MultiFakeMT5()
+        mt5.positions = [SimpleNamespace(ticket=5, symbol="EURUSD", magic=MAGIC_BY_ASSET["EURUSD"],
+                                         comment=COMMENT_BY_ASSET["EURUSD"], profit=0.0, time=0, type=0,
+                                         volume=0.01)]
+        with tempfile.TemporaryDirectory() as tmp, patch("src.execution_demo.DEMO_EXECUTION_ENABLED", True):
+            result = self._run(mt5, Path(tmp), models=_models(self.ASSETS, 0.70, 0.30), dry_run=False)
+            shadow = pd.read_csv(Path(tmp) / "live" / "shadow_signals.csv")
+
+        sent_symbols = {r["symbol"] for r in mt5.sent}
+        self.assertNotIn("EURUSD", sent_symbols)
+        self.assertEqual(sent_symbols, {"USDJPY", "XAUUSD"})
+        eurusd = next(item for item in result["results"] if item["asset"] == "EURUSD")
+        self.assertIsNone(eurusd["execution"])
+        self.assertIn("FORWARD_POSITION_OPEN", set(shadow["SKIP_REASON"]))
 
 
 class ManualCommandsTests(unittest.TestCase):

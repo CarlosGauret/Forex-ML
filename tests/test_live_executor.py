@@ -162,6 +162,51 @@ class LiveExecutorTests(unittest.TestCase):
             self.assertEqual(result.reason, DEMO_REQUIRED_REASON)
             self.assertEqual(mt5.sent, [])
 
+    def _write_opens(self, journal_count, forward_count, when):
+        live = self.root / "live"
+        live.mkdir(exist_ok=True)
+        stamp = when.isoformat()
+        with (live / "orders.csv").open("w", encoding="utf-8") as handle:
+            handle.write("TIMESTAMP_UTC,STATUS,SIGNAL_ID\n")
+            handle.writelines(f"{stamp},SENT,S{i}\n" for i in range(journal_count))
+            handle.write(f"{stamp},SKIP,IGNORED\n")
+        with (live / "forward_demo_orders.csv").open("w", encoding="utf-8") as handle:
+            handle.write("timestamp,status,event,ticket\n")
+            handle.writelines(f"{stamp},SENT,OPEN,{i}\n" for i in range(forward_count))
+            handle.write(f"{stamp},CLOSED,CLOSE,1\n")
+
+    def test_daily_trade_limit_counts_both_strategies_and_blocks(self):
+        from datetime import datetime, timezone
+
+        now = datetime(2026, 10, 5, 20, 0, tzinfo=timezone.utc)  # 15:00 Peru
+        self._write_opens(journal_count=6, forward_count=4, when=now.replace(hour=14))
+        mt5 = FakeMT5()
+        events = []
+        with self._enable_demo():
+            result = execute_signal(mt5, _intent(), self.root, dry_run=False, now=now,
+                                    notify=lambda event, msg: events.append(event))
+
+        self.assertEqual(result.reason, "DAILY_TRADE_LIMIT")
+        self.assertEqual(mt5.sent, [])
+        self.assertEqual(events, ["DAILY_TRADE_LIMIT|20261005"])
+
+    def test_daily_trade_limit_allows_ninth_and_resets_next_peru_day(self):
+        from datetime import datetime, timezone
+
+        from src.live_executor import trades_opened_today
+
+        now = datetime(2026, 10, 5, 20, 0, tzinfo=timezone.utc)
+        self._write_opens(journal_count=5, forward_count=4, when=now.replace(hour=14))
+        self.assertEqual(trades_opened_today(self.root, now), 9)
+        # 04:00 UTC del dia 6 = 23:00 Peru del dia 5: sigue contando
+        self.assertEqual(trades_opened_today(self.root, datetime(2026, 10, 6, 4, 0, tzinfo=timezone.utc)), 9)
+        # 05:30 UTC del dia 6 = 00:30 Peru del dia 6: nuevo dia
+        self.assertEqual(trades_opened_today(self.root, datetime(2026, 10, 6, 5, 30, tzinfo=timezone.utc)), 0)
+        mt5 = FakeMT5()
+        with self._enable_demo():
+            result = execute_signal(mt5, _intent(), self.root, dry_run=False, now=now)
+        self.assertEqual(result.status, "SENT")
+
     def test_demo_flag_disabled_blocks_sending(self):
         mt5 = FakeMT5()
 

@@ -55,3 +55,6 @@ live/
 
 # Local backups
 run_paper.bat.backup_*
+
+# Historico H1 del broker (se regenera con: python main.py LIVE PORTFOLIO RESEARCH)
+data/mt5/

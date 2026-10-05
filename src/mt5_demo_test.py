@@ -313,7 +313,7 @@ def open_demo_test(mt5, root, notify=None, now=None):
         now=now,
     )
     if ok and _confirmed_test_position(mt5, order_ticket) is not None:
-        _notify_open(root, notify, context["symbol"], DEMO_TEST_VOLUME, executed_price)
+        _notify_open(root, notify, context["symbol"], DEMO_TEST_VOLUME, executed_price, order_ticket)
     return _base_result(
         status,
         reason,
@@ -395,7 +395,7 @@ def close_demo_test(mt5, root, notify=None, now=None):
         now=now,
     )
     if ok:
-        _notify_close(root, notify, symbol, profit)
+        _notify_close(root, notify, symbol, profit, ticket)
     return _base_result(
         "CLOSED" if ok else "ERROR",
         "OK" if ok else f"CLOSE_FAILED: {_value(sent, 'comment', mt5.last_error())}",
@@ -416,7 +416,7 @@ def close_demo_test(mt5, root, notify=None, now=None):
     )
 
 
-def _notify_open(root, notify, symbol, volume, price):
+def _notify_open(root, notify, symbol, volume, price, ticket=None):
     message = "\n".join([
         "MT5 DEMO - OPERACION ABIERTA",
         "DEMO / SIN DINERO REAL",
@@ -424,7 +424,7 @@ def _notify_open(root, notify, symbol, volume, price):
         f"Volumen: {volume}",
         f"Precio: {price}",
     ])
-    _notify(root, notify, "MT5_DEMO_TEST_OPEN", message)
+    _notify(root, notify, f"MT5_DEMO_TEST_OPEN|{ticket}", message)
 
 
 def _confirmed_test_position(mt5, ticket):
@@ -436,14 +436,14 @@ def _confirmed_test_position(mt5, ticket):
     return None
 
 
-def _notify_close(root, notify, symbol, profit):
+def _notify_close(root, notify, symbol, profit, ticket=None):
     message = "\n".join([
         "MT5 DEMO - OPERACION CERRADA",
         "DEMO / SIN DINERO REAL",
         f"Simbolo: {symbol}",
         f"Profit/Loss: {profit:+.2f}",
     ])
-    _notify(root, notify, "MT5_DEMO_TEST_CLOSE", message)
+    _notify(root, notify, f"MT5_DEMO_TEST_CLOSE|{ticket}", message)
 
 
 def _notify(root, notify, event_id, message):

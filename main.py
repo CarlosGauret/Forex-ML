@@ -1861,10 +1861,36 @@ def ejecutar_mt5_demo_auto_status():
     print("ORDENES ENVIADAS: 0")
 
 
+def _avisar_fallo_runner(nombre, error):
+    """Aviso de Telegram cuando un runner automatico falla (maximo uno por dia y tipo)."""
+    from datetime import datetime, timezone
+
+    from src.telegram_events import send_telegram_event
+
+    dia = datetime.now(timezone.utc).strftime("%Y%m%d")
+    send_telegram_event(
+        RAIZ_PROYECTO,
+        f"{nombre}_FAIL|{dia}|{type(error).__name__}",
+        "MT5_DEMO",
+        "\n".join([
+            f"🚨 {nombre.replace('_', ' ')} - FALLO DEL RUNNER",
+            f"Error: {str(error)[:300]}",
+            "Revisa que MetaTrader 5 este abierto, logueado y con Algo Trading activo.",
+            "DEMO / SIN DINERO REAL",
+        ]),
+        asset="ALL",
+        config_id=nombre,
+    )
+
+
 def ejecutar_mt5_demo_auto_run():
     from src.mt5_demo_auto import run_auto
 
-    resultados = run_auto(RAIZ_PROYECTO)
+    try:
+        resultados = run_auto(RAIZ_PROYECTO)
+    except Exception as error:
+        _avisar_fallo_runner("MT5_DEMO_AUTO", error)
+        raise
     ordenes = sum(item.orders_sent for item in resultados)
 
     print("FOREX ML - MT5 DEMO AUTO RUN")
@@ -3720,8 +3746,10 @@ def ejecutar_live_portfolio(forzar_dryrun=False):
 
     try:
         resultado = run_portfolio_live(RAIZ_PROYECTO, dry_run=True if forzar_dryrun else None)
-    except RuntimeError as error:
-        print(f"FOREX ML - LIVE PORTFOLIO: ERROR MT5: {error}")
+    except Exception as error:
+        print(f"FOREX ML - LIVE PORTFOLIO: ERROR: {error}")
+        if not forzar_dryrun:
+            _avisar_fallo_runner("LIVE_PORTFOLIO", error)
         sys.exit(1)
 
     print("FOREX ML - LIVE PORTFOLIO DEMO (exploracion, no validado para real)")
@@ -3777,6 +3805,33 @@ def ejecutar_live_portfolio_train():
     print("Entrenando modelos del portafolio DEMO (puede tardar unos minutos)...")
     reporte = pd.DataFrame(train_portfolio_models(RAIZ_PROYECTO))
     print(reporte[["activo", "direccion", "train_end", "holdout_signals_per_day", "holdout_win_rate"]].to_string(index=False))
+
+
+def ejecutar_live_portfolio_research(descargar=True):
+    import pandas as pd
+
+    from config import DEMO_PORTFOLIO_ASSETS, NEW_PORTFOLIO_ASSETS
+    from src.portfolio_research import CONFIRMATION_START, download_mt5_history, run_full_research
+
+    activos = list(dict.fromkeys(DEMO_PORTFOLIO_ASSETS + NEW_PORTFOLIO_ASSETS))
+    if descargar:
+        print("Descargando historico H1 del broker (MT5)...")
+        for activo, estado in download_mt5_history(RAIZ_PROYECTO, activos).items():
+            print(f"  {activo}: {estado}")
+    salida = run_full_research(RAIZ_PROYECTO, activos)
+    tabla = salida["table"]
+    pd.set_option("display.width", 220)
+    print()
+    print("FOREX ML - INVESTIGACION WALK-FORWARD PORTAFOLIO (R despues de costos)")
+    print(tabla.to_string(index=False))
+    print()
+    print(f"Comparacion de portafolios desde {CONFIRMATION_START:%Y-%m-%d} (riesgo 1%, max 5 posiciones, 2 por moneda):")
+    for nombre, sim in salida["portfolios"].items():
+        print(f"  {nombre:<30} capital x{sim['final_equity']:.2f}  max DD {sim['max_drawdown']:.1%}  "
+              f"operaciones {sim['trades']} (omitidas {sim['skipped']})")
+    print()
+    print(f"Direcciones habilitadas: {int(tabla['enabled'].sum())}/{len(tabla)}")
+    print(f"Seleccion guardada en: {salida['selection_path']}")
 
 
 def ejecutar_live_test(activo, direccion):
@@ -3910,6 +3965,8 @@ def main():
                 ejecutar_live_portfolio_audit()
             elif submodo_live == "TRAIN":
                 ejecutar_live_portfolio_train()
+            elif submodo_live == "RESEARCH":
+                ejecutar_live_portfolio_research(descargar="NODOWNLOAD" not in [x.upper() for x in sys.argv[4:]])
             else:
                 ejecutar_live_portfolio(forzar_dryrun=submodo_live == "DRYRUN")
         elif modo_live == "TEST" and len(sys.argv) >= 5:
@@ -3925,7 +3982,7 @@ def main():
         else:
             print("Usa: python main.py LIVE EURUSD [DRYRUN]")
             print("O: python main.py LIVE GOLD [DRYRUN]")
-            print("O: python main.py LIVE PORTFOLIO [DRYRUN|TRAIN|AUDIT]")
+            print("O: python main.py LIVE PORTFOLIO [DRYRUN|TRAIN|AUDIT|RESEARCH [NODOWNLOAD]]")
             print("O: python main.py LIVE TEST EURUSD BUY|SELL")
             print("O: python main.py LIVE CLOSEALL")
             print("O: python main.py LIVE RECONCILE")

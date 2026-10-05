@@ -20,6 +20,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$goldLog = Join-Path $logsDir 'paper_gold_runner.log';" ^
   "$eurusdLog = Join-Path $logsDir 'paper_eurusd_runner.log';" ^
   "$autoLog = Join-Path $logsDir 'mt5_demo_auto_runner.log';" ^
+  "$portfolioLog = Join-Path $logsDir 'live_portfolio_runner.log';" ^
+  "$dailyLog = Join-Path $logsDir 'telegram_daily_runner.log';" ^
   "$lock = Join-Path $project 'paper\paper.lock';" ^
   "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false;" ^
   "$OutputEncoding = [Console]::OutputEncoding;" ^
@@ -74,6 +76,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$goldExit = 1;" ^
   "$eurusdExit = 1;" ^
   "$autoExit = 1;" ^
+  "$portfolioExit = 1;" ^
   "try {" ^
   "  if (-not (Test-Path $python)) { throw ('No existe Python del entorno virtual: ' + $python) }" ^
   "  Write-Log $summaryLog 'Ejecutando PAPER GOLD...';" ^
@@ -85,12 +88,19 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "  Write-Log $summaryLog 'Ejecutando MT5 DEMO AUTO RUN...';" ^
   "  $autoExit = Invoke-PaperCommand 'MT5 DEMO AUTO RUN' @('MT5', 'DEMO', 'AUTO', 'RUN') $autoLog;" ^
   "  Write-Log $summaryLog ('MT5 DEMO AUTO RUN EXIT CODE: ' + $autoExit);" ^
+  "  Write-Log $summaryLog 'Ejecutando LIVE PORTFOLIO (8 activos)...';" ^
+  "  $portfolioExit = Invoke-PaperCommand 'LIVE PORTFOLIO' @('LIVE', 'PORTFOLIO') $portfolioLog;" ^
+  "  Write-Log $summaryLog ('LIVE PORTFOLIO EXIT CODE: ' + $portfolioExit);" ^
+  "  if ((Get-Date).Hour -ge 17) {" ^
+  "    $dailyExit = Invoke-PaperCommand 'TELEGRAM DAILY' @('TELEGRAM', 'DAILY') $dailyLog;" ^
+  "    Write-Log $summaryLog ('TELEGRAM DAILY EXIT CODE: ' + $dailyExit);" ^
+  "  }" ^
   "} catch {" ^
   "  Write-Log $summaryLog ('ERROR RUNNER: ' + $_.Exception.Message);" ^
   "} finally {" ^
   "  Clear-OwnPaperLock $lock $currentPid $ownLockStream;" ^
   "  $overallExit = 0;" ^
-  "  if (($goldExit -ne 0) -or ($eurusdExit -ne 0) -or ($autoExit -ne 0)) { $overallExit = 1 }" ^
+  "  if (($goldExit -ne 0) -or ($eurusdExit -ne 0) -or ($autoExit -ne 0) -or ($portfolioExit -ne 0)) { $overallExit = 1 }" ^
   "  $runEnd = Get-Date;" ^
   "  Write-Log $summaryLog ('PAPER RUN END: ' + $runEnd.ToString('yyyy-MM-dd HH:mm:ss'));" ^
   "  Write-Log $summaryLog ('GOLD EXIT CODE: ' + $goldExit);" ^
